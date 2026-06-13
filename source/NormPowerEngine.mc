@@ -11,6 +11,8 @@ class NormPowerEngine {
     hidden var mSumPowerToFourth as Double = 0.0d;
     hidden var mTotalNPSamples as Long = 0l;
 
+    function initialize() {}
+
     // Call 1 time per second
     function compute(power as Number) as Number {
         var power30 = calculatePower30(power);

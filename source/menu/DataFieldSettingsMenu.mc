@@ -71,14 +71,14 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
       targetMenu.addItem(mi);
 
-      mi = new WatchUi.MenuItem(
-        "Average heartrate|0~(bpm)",
-        null,
-        "target_average_heartrate",
-        null
-      );
-      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
-      targetMenu.addItem(mi);
+      // mi = new WatchUi.MenuItem(
+      //   "Average heartrate|0~(bpm)",
+      //   null,
+      //   "target_average_heartrate",
+      //   null
+      // );
+      // mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      // targetMenu.addItem(mi);
 
       mi = new WatchUi.MenuItem(
         "Average power|0~(W)",
@@ -476,7 +476,7 @@ function getFieldTypeAsString(fieldType as FieldType) as String {
       return "Distance";
     case FTCalories:
       return "Calories";
-    case FTAverageHeartRate:
+    case FTAverageHeartRateZone:
       return "Avg heartrate";
     case FTAveragePower:
       return "Avg power";

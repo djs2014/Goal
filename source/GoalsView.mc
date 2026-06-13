@@ -605,8 +605,8 @@ class GoalsView extends WatchUi.DataField {
                 return "DST";
             case FTCalories:
                 return "CAL";
-            case FTAverageHeartRate:
-                return "AHR";
+            case FTAverageHeartRateZone:
+                return "AHZ";
             case FTAveragePower:
                 return "APW";
             case FTAverageSpeed:
@@ -645,8 +645,8 @@ class GoalsView extends WatchUi.DataField {
                 return "DISTANCE";
             case FTCalories:
                 return "CALORIES";
-            case FTAverageHeartRate:
-                return "AVG HEART RATE";
+            case FTAverageHeartRateZone:
+                return "AVG HEART RATE ZONE";
             case FTAveragePower:
                 return "AVG POWER";
             case FTAverageSpeed:

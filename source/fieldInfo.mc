@@ -12,7 +12,7 @@ enum FieldType {
     FTUnknown = 0,
     FTDistance = 1,
     FTCalories = 2,
-    FTAverageHeartRate = 3,
+    FTAverageHeartRateZone = 3,
     FTAveragePower = 4,
     FTAverageSpeed = 5,
     FTAverageCadence = 6,

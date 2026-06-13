@@ -61,7 +61,7 @@ class GoalsApp extends Application.AppBase {
 
                 Storage.setValue("target_distance", 150); // km
                 Storage.setValue("target_calories", 2000); // calories
-                Storage.setValue("target_average_heartrate", 120); // bpm
+                // Storage.setValue("target_average_heartrate", 120); // bpm
                 Storage.setValue("target_average_power", 200); // watts
                 Storage.setValue("target_average_speed", 28); // km/h
                 Storage.setValue("target_average_cadence", 90); // rpm
@@ -77,12 +77,15 @@ class GoalsApp extends Application.AppBase {
             var showFields =
                 $.getStorageValue("show_fields", [$.gShowFieldsArraySize]) as
                 Array<Numeric or FieldLayout>;
-            
+
             if ($.ensureArraySize(showFields, $.gShowFieldsArraySize, 0)) {
                 $.setStorageValueOrArray("show_fields", showFields);
             }
-            $.gShowLabels = $.getStorageValue("show_labels", $.gShowLabels) as Boolean;
-            
+            $.gShowLabels =
+                $.getStorageValue("show_labels", $.gShowLabels) as Boolean;
+            $.gShowValues =
+                $.getStorageValue("show_values", $.gShowValues) as Boolean;
+                
             $.gDemo = $.getStorageValue("demo", false) as Boolean;
             $.logInfo(["Demo mode:", $.gDemo]);
             if ($.gDemo) {
@@ -95,11 +98,11 @@ class GoalsApp extends Application.AppBase {
             $.gTargetCalories =
                 $.getStorageValue("target_calories", $.gTargetCalories) as
                 Number;
-            $.gTargetAverageHeartRate =
-                $.getStorageValue(
-                    "target_average_heartrate",
-                    $.gTargetAverageHeartRate
-                ) as Number;
+            // $.gTargetAverageHeartRate =
+            //     $.getStorageValue(
+            //         "target_average_heartrate",
+            //         $.gTargetAverageHeartRate
+            //     ) as Number;
             $.gTargetAveragePower =
                 $.getStorageValue(
                     "target_average_power",
@@ -135,11 +138,16 @@ class GoalsApp extends Application.AppBase {
                     "target_minutes_elapsed",
                     $.gTargetMinutesElapsed
                 ) as Number;
-            $.gTargetHeartRateZone =
+            var targetHeartRateZone =
                 $.getStorageValue(
                     "target_heart_rate_zone",
-                    $.gTargetHeartRateZone
+                    3
                 ) as Number;
+
+            // Calculate based on zone the max heartrate,
+            var heartRate = new HeartRate();
+            heartRate.initHrZones(targetHeartRateZone);
+            $.gTargetAverageHeartRate = heartRate.mTargetHeartRate;
 
             $.logInfo(["User settings loaded"]);
         } catch (ex) {
@@ -157,10 +165,10 @@ function getApp() as GoalsApp {
 var gShowFieldsArraySize as Number = $.gMaxProgressColumns + 1;
 var gDemo as Boolean = false;
 var gShowLabels as Boolean = true;
+var gShowValues as Boolean = false;
 
 var gTargetDistance as Number = 150;
 var gTargetCalories as Number = 2000;
-var gTargetAverageHeartRate as Number = 120;
 var gTargetAveragePower as Number = 200;
 var gTargetAverageSpeed as Number = 28;
 var gTargetAverageCadence as Number = 90;
@@ -168,4 +176,5 @@ var gTargetNormalizedPower as Number = 220;
 var gTargetTotalAscent as Number = 300;
 var gTargetTotalDescent as Number = 300;
 var gTargetMinutesElapsed as Number = 300;
-var gTargetHeartRateZone as Number = 3;
+//var gTargetHeartRateZone as Number = 3;
+var gTargetAverageHeartRate as Number = 120;

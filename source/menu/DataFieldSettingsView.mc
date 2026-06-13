@@ -63,6 +63,9 @@ class DataFieldSettingsDelegate extends WatchUi.BehaviorDelegate {
     boolean = Storage.getValue("show_labels") ? true : false;
     menu.addItem(new WatchUi.ToggleMenuItem("Show labels", null, "show_labels", boolean, null));
     
+    boolean = Storage.getValue("show_values") ? true : false;
+    menu.addItem(new WatchUi.ToggleMenuItem("Show values", null, "show_values", boolean, null));
+    
     boolean = Storage.getValue("demo") ? true : false;
     menu.addItem(new WatchUi.ToggleMenuItem("Demo (if paused)", null, "demo", boolean, null));
 

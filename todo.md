@@ -11,7 +11,7 @@ Abbreviations:
 Field Type,Abbreviation,Alternative,Why it works
 FTDistance,DST,KM / MI,Standard cycling shorthand.
 FTCalories,CAL,KCAL,Universally recognized.
-FTAverageHeartRate,AHR,AVG ♥,Distinguishes from live HR.
+FTAverageHeartRateZone,AHR,AVG ♥,Distinguishes from live HR.
 FTAveragePower,APW,AV W,Clean and professional.
 FTAverageSpeed,AVS,SPD,"Keeps the ""Average"" context."
 FTAverageCadence,CAD,RPM,Cyclists instantly recognize RPM.
@@ -23,6 +23,8 @@ FTHeartRateZone,HRZ,ZON,"Clearly indicates it's the Zone, not the BPM."
 
 
 ----------------TODO
+Show values -> when paused to right if checked then no value.
+
 1. Training Load & Intensity Targets
 
 For performance-minded riders, tracking accumulation metrics ensures they don't over- or under-train during a specific block.

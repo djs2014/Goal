@@ -10,13 +10,17 @@ class Progress {
         info as Activity.Info,
         fieldType as FieldType
     ) as Float {
-        // Distance related fields
         switch (fieldType) {
+            // Distance related fields
             case FTDistance:
             case FTDistanceToDestination:
             case FTDistanceToNext:
             case FTDistanceOrToDestination:
-                return getProgressForDistance(info, fieldType);         
+                return getProgressForDistance(info, fieldType);
+            // heart rate related fields
+            case FTAverageHeartRateZone:
+            case FTHeartRateZone:
+                return getProgressForHeartRate(info, fieldType);
         }
 
         // Other fields
@@ -27,24 +31,12 @@ class Progress {
 
         switch (fieldType) {
             case FTUnknown:
-                return 0.0f;
-            // case FTDistance:
-            //     // Target is in kilometers, but Connect IQ distance is in meters, so convert to km by dividing by 1000
-            //     return (
-            //         ($.getActivityValue(info, :elapsedDistance, 0) as Float) /
-            //         1000.0 /
-            //         targetValue.toFloat()
-            //     );
+                return 0.0f;           
             case FTCalories:
                 return (
                     ($.getActivityValue(info, :calories, 0) as Number) /
                     targetValue.toFloat()
-                );
-            case FTAverageHeartRate:
-                return (
-                    ($.getActivityValue(info, :averageHeartRate, 0) as Number) /
-                    targetValue.toFloat()
-                );
+                );          
             case FTAveragePower:
                 return (
                     ($.getActivityValue(info, :averagePower, 0) as Number) /
@@ -80,21 +72,44 @@ class Progress {
                     ($.getActivityValue(info, :elapsedTime, 0) as Number) /
                     60000.0 /
                     targetValue.toFloat()
-                );
-            case FTHeartRateZone:
-                return (
-                    ($.getActivityValue(info, :heartRateZone, 0) as Number) /
-                    targetValue.toFloat()
-                );
+                );            
             default:
                 $.logInfo(["Unknown field type:", fieldType]);
                 return 0.0f;
         }
     }
 
-    hidden var mNormalizedPower as Number = 0;
-    function setNormalizedPower(np as Number) as Void {
-        mNormalizedPower = np;
+ 
+    hidden function getProgressForHeartRate( info as Info,
+        fieldType as FieldType
+    ) as Float {
+        var targetValue = getTargetValueForField(fieldType);
+        if (targetValue == 0) {
+            return 0.0f;
+        }
+        
+        var heartRate = new HeartRate();
+        heartRate.initHrZones(3);
+        var currentHeartRate = $.getActivityValue(info, :currentHeartRate, 0) as Number;
+        var maxHeartRate = heartRate.mTargetHeartRate;
+        var zone = heartRate.getHeartRateZone(currentHeartRate);
+        System.println("Current HR: " + currentHeartRate + ", Max HR: " + maxHeartRate + ", Zone: " + zone);
+
+        switch (fieldType) {
+            case FTAverageHeartRateZone:
+                return (
+                    ($.getActivityValue(info, :averageHeartRate, 0) as Number) /
+                    targetValue.toFloat()
+                );
+            case FTHeartRateZone:
+                return (
+                    ($.getActivityValue(info, :currentHeartRate, 0) as Number) /
+                    targetValue.toFloat()
+                );
+            default:
+                $.logInfo(["Unknown field type:", fieldType]);
+                return 0.0f;
+        }
     }
 
     hidden function getProgressForDistance(
@@ -128,9 +143,9 @@ class Progress {
                     $.getActivityValue(info, :distanceToDestination, 0.0f) as
                     Float;
                 if (targetValue == 0) {
-                    targetValue = getTargetValueForField(
-                        FTDistanceOrToDestination
-                    ) * 1000.0f; // convert to meters
+                    targetValue =
+                        getTargetValueForField(FTDistanceOrToDestination) *
+                        1000.0f; // convert to meters
                 }
                 break;
         }
@@ -149,8 +164,6 @@ class Progress {
                 return $.gTargetDistance;
             case FTCalories:
                 return $.gTargetCalories;
-            case FTAverageHeartRate:
-                return $.gTargetAverageHeartRate;
             case FTAveragePower:
                 return $.gTargetAveragePower;
             case FTAverageSpeed:
@@ -165,11 +178,19 @@ class Progress {
                 return $.gTargetTotalDescent;
             case FTMinutesElapsed:
                 return $.gTargetMinutesElapsed;
+            case FTAverageHeartRateZone:
             case FTHeartRateZone:
-                return $.gTargetHeartRateZone;
+                // Target based on max heart rate for the selected zone
+                return $.gTargetAverageHeartRate;
             default:
                 $.logInfo(["Unknown field type:", fieldType]);
                 return 0;
         }
     }
+
+    hidden var mNormalizedPower as Number = 0;
+    function setNormalizedPower(np as Number) as Void {
+        mNormalizedPower = np;
+    }
+
 }
