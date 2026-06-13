@@ -39,7 +39,7 @@ class GoalsView extends WatchUi.DataField {
 
     hidden var mProgress as Progress = new Progress();
     hidden var mNormPowerEngine as NormPowerEngine = new NormPowerEngine();
-    hidden var mHasCourseNavigation as Boolean = false;
+    hidden var mHasCourseNavigation as Boolean = false;                
 
     function initialize() {
         DataField.initialize();
@@ -107,6 +107,7 @@ class GoalsView extends WatchUi.DataField {
                         info,
                         fieldType
                     );
+                    
                     //if ($.gShowValues) {
                     // mProgressFieldValues[i] = mProgress.getValueForField(
                     //     info,
@@ -631,7 +632,10 @@ class GoalsView extends WatchUi.DataField {
             case FTMinutesElapsed:
                 return "TIM";
             case FTHeartRateZone:
-                return "HRZ" + $.gTargetHeartRateZone.format("%0d");
+                if ($.gHeartRate.getIsInWarmUp()) {
+                    return "HRZ ~";
+                }
+                return "HRZ " + $.gTargetHeartRateZone.format("%0d");
             case FTDistanceToDestination:
                 return "D2D";
             // case FTDistanceToNext:
@@ -675,7 +679,10 @@ class GoalsView extends WatchUi.DataField {
             case FTMinutesElapsed:
                 return "MINUTES ELAPSED";
             case FTHeartRateZone:
-                return "HEART RATE ZONE (" + $.gTargetHeartRateZone.format("%0d") + ")";
+                if ($.gHeartRate.getIsInWarmUp()) {
+                    return "HEARTRATEZONE WARMUP";
+                }
+                return "HEARTRATEZONE " + $.gTargetHeartRateZone.format("%0d");
             case FTDistanceToDestination:
                 return "DISTANCE TO DEST";
             // case FTDistanceToNext:

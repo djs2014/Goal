@@ -39,7 +39,7 @@ Show values -> when paused to right if checked then no value.
 
 For performance-minded riders, tracking accumulation metrics ensures they don't over- or under-train during a specific block.
 
-FTIntensityFactor (IF)
+x FTIntensityFactor (IF)
 
     Abbreviation: IF
 
@@ -47,7 +47,7 @@ FTIntensityFactor (IF)
 
     Garmin API: info.intensityFactor
 
-FTTrainingStressScore (TSS)
+x FTTrainingStressScore (TSS)
 
     Abbreviation: TSS
 
