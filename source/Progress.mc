@@ -93,40 +93,22 @@ class Progress {
         }
     }
 
+    // Target values based on target heart rate zone, which is set by the user in the settings menu
+    // Returns a smooth float from 0.0 to 1.0+ representing progress *inside* a targeted zone
     hidden function getProgressForHeartRate(
         info as Info,
         fieldType as FieldType
     ) as Float {
-        var targetValue = getTargetValueForField(fieldType);
-        if (targetValue == 0) {
-            return 0.0f;
-        }
-
-        var heartRate = new HeartRate();
-        heartRate.initHrZones(3);
-        var currentHeartRate =
-            $.getActivityValue(info, :currentHeartRate, 0) as Number;
-        var maxHeartRate = heartRate.mTargetHeartRate;
-        var zone = heartRate.getHeartRateZone(currentHeartRate);
-        // System.println(
-        //     "Current HR: " +
-        //         currentHeartRate +
-        //         ", Max HR: " +
-        //         maxHeartRate +
-        //         ", Zone: " +
-        //         zone
-        // );
-
         switch (fieldType) {
             case FTAverageHeartRateZone:
-                return (
-                    ($.getActivityValue(info, :averageHeartRate, 0) as Number) /
-                    targetValue.toFloat()
+                return $.gHeartRate.calculateZoneProgress(
+                    $.getActivityValue(info, :averageHeartRate, 0) as Number,
+                    $.gTargetHeartRateZone
                 );
             case FTHeartRateZone:
-                return (
-                    ($.getActivityValue(info, :currentHeartRate, 0) as Number) /
-                    targetValue.toFloat()
+                return $.gHeartRate.calculateZoneProgress(
+                    $.getActivityValue(info, :currentHeartRate, 0) as Number,
+                    $.gTargetHeartRateZone
                 );
             default:
                 $.logInfo([
@@ -137,6 +119,7 @@ class Progress {
         }
     }
 
+    // Target values for each field type, based on user settings or calculated from active course data (e.g., distance to destination)
     hidden function getProgressForDistance(
         info as Info,
         fieldType as FieldType
@@ -170,13 +153,14 @@ class Progress {
                 }
                 break;
         }
-        
+
         if (targetValue == 0) {
             return 0.0f;
         }
         return elapsedDistance / targetValue.toFloat();
     }
 
+    // Fixed target values for each field type, based on user settings    
     hidden function getTargetValueForField(fieldType as FieldType) as Number {
         switch (fieldType) {
             case FTUnknown:
@@ -198,11 +182,7 @@ class Progress {
             case FTTotalDescent:
                 return $.gTargetTotalDescent;
             case FTMinutesElapsed:
-                return $.gTargetMinutesElapsed;
-            case FTAverageHeartRateZone:
-            case FTHeartRateZone:
-                // Target based on max heart rate for the selected zone
-                return $.gTargetAverageHeartRate;
+                return $.gTargetMinutesElapsed;            
             default:
                 $.logInfo([
                     "getTargetValueForField Unknown field type:",

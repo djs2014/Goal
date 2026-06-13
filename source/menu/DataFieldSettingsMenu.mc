@@ -34,22 +34,14 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
     } else {
       _arrayIndex = idx;
     }
-    // $.logInfo([
-    //   "Selected menu item:",
-    //   id,
-    //   "storageKey:",
-    //   _storageKey,
-    //   "arrayIndex:",
-    //   _arrayIndex,
-    // ]);
-
+    
     if (id instanceof String && _item instanceof ToggleMenuItem) {
       $.setStorageValueOrArray(id, _item.isEnabled());
       return;
     }
 
     if (id instanceof String && id.equals("targets")) {
-      var targetMenu = new WatchUi.Menu2({ :title => "Poi server config" });
+      var targetMenu = new WatchUi.Menu2({ :title => "Targets / Goals" });
 
       var mi;
 
@@ -188,6 +180,10 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       var mi = new WatchUi.MenuItem("Layout", null, prefix + "|0", null);
       mi.setSubLabel($.getLayoutByIndex(prefix, 0));
       fieldMenu.addItem(mi);
+
+      // // Divider TODO 
+      // mi = new WatchUi.MenuItem("Fields", null, null, null);
+      // fieldMenu.addItem(mi);
 
       // Bars
       for (var i = 1; i < $.gShowFieldsArraySize; i++) {

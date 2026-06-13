@@ -631,7 +631,7 @@ class GoalsView extends WatchUi.DataField {
             case FTMinutesElapsed:
                 return "TIM";
             case FTHeartRateZone:
-                return "HRZ";
+                return "HRZ" + $.gTargetHeartRateZone.format("%0d");
             case FTDistanceToDestination:
                 return "D2D";
             // case FTDistanceToNext:
@@ -671,7 +671,7 @@ class GoalsView extends WatchUi.DataField {
             case FTMinutesElapsed:
                 return "MINUTES ELAPSED";
             case FTHeartRateZone:
-                return "HEART RATE ZONE";
+                return "HEART RATE ZONE (" + $.gTargetHeartRateZone.format("%0d") + ")";
             case FTDistanceToDestination:
                 return "DISTANCE TO DEST";
             // case FTDistanceToNext:

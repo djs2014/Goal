@@ -1,7 +1,6 @@
 To Fix
 Groen is ook donker -> hsp werkt niet?
 
-Check avg heartzone -> maak vloeiend / en met zone lines?
 Divider perc 80%
 Configuratie per edgefield
 Endurance/Current stuff
@@ -175,3 +174,13 @@ Config profiles: or add new ones + save current target values
                 break;
         }
     }
+
+
+
+HRZ warmup bar
+1. The "Zone 0" Warmup Buffer
+
+When you first roll out of your driveway, your actual heart rate will be lower than your Zone 1 floor (e.g., lower than 128 bpm).
+With the code written as-is, calculateZoneProgress safely returns 0.0f (an empty track), which is perfect.
+
+However, if you want some visual feedback during your warmup, you can add a tiny fallback: if your heart rate is below Zone 1, you can calculate your progress from a resting heart rate (e.g., 60 bpm) up to your Zone 1 floor. That way, you get a "Warmup" bar before the real intervals start!

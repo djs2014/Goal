@@ -4,38 +4,23 @@ import Toybox.WatchUi;
 
 public class HeartRate {
     var mHeartRateZones as Array<Number> = [] as Array<Number>;
-    var mTargetHeartRateZone as Number = 0;
-    var mTargetHeartRate as Number = 0;
 
     function initialize() {}
 
-    function initHrZones(targetHrZone as Number) {
-        mTargetHeartRateZone = targetHrZone;
-
+    function initHrZones() as Void {
+        // Array of heart rate zones for biking, in beats per minute (BPM)
+        // [minzone1, maxzone1, maxzone2, maxzone3, maxzone4, maxzone5]
         mHeartRateZones = UserProfile.getHeartRateZones(
             UserProfile.HR_ZONE_SPORT_BIKING
         );
-
-        // System.println(mHeartRateZones);
-        if (mHeartRateZones.size() == 0) {
-            return;
-        }
-
-        if (targetHrZone > 0 and targetHrZone < mHeartRateZones.size()) {
-            mTargetHeartRate =
-                (mHeartRateZones[targetHrZone - 1] +
-                    mHeartRateZones[targetHrZone]) /
-                2;
-        } else {
-            mTargetHeartRate = mHeartRateZones[mHeartRateZones.size() - 1];
-        }
-    }
+        $.logInfo(["Heart rate zones initialized:", mHeartRateZones]);
+    }    
 
     function getHeartRateZone(heartRate as Number) as Number {
         if (mHeartRateZones.size() == 0) {
             return 0;
         }
-
+        
         if (heartRate < mHeartRateZones[0]) {
             return 0;
         }
@@ -48,8 +33,44 @@ public class HeartRate {
 
         return mHeartRateZones.size();
     }
+    
+    // Returns a smooth float from 0.0 to 1.0+ representing progress *inside* a targeted zone
+    function calculateZoneProgress(
+        liveHeartRate as Number,
+        targetZone as Number
+    ) as Float {
+        if (mHeartRateZones.size() < 6 || targetZone < 1 || targetZone > 5) {
+            return 0.0f;
+        }
 
-    function getMaxHeartRateZone() as Number {
-        return mHeartRateZones.size() - 1; // Zone 0 to 5
+        // System.println([
+        //     "calculateZoneProgress",
+        //     "liveHeartRate:",
+        //     liveHeartRate,
+        //     "targetZone:",
+        //     targetZone,
+        //     "zone",
+        //     getHeartRateZone(liveHeartRate)
+        // ]);
+
+        // 1. Get the floor and ceiling bounds for this exact targeted zone
+        // 6:48:40 - [Heart rate zones initialized:, [128, 153, 179, 204, 230, 255]]
+        var zoneFloor = mHeartRateZones[targetZone - 1]; // e.g., if targetZone=2, floor is index 1 (153)
+        var zoneCeiling = mHeartRateZones[targetZone]; // e.g., if targetZone=2, ceiling is index 2 (179)
+
+        // 2. Handle the edge case if your live HR hasn't even reached the zone yet
+        if (liveHeartRate < zoneFloor) {
+            return 0.0f;
+        }
+
+        // 3. Perform standard linear normalization: (Value - Min) / (Max - Min)
+        var range = (zoneCeiling - zoneFloor).toFloat();
+        if (range <= 0.0f) {
+            return 0.0f;
+        }
+
+        var progressInZone = (liveHeartRate - zoneFloor).toFloat() / range;
+
+        return progressInZone; // e.g., if HR is 166 in Zone 2: (166-153)/(179-153) = 13/26 = 0.5f (Perfectly 50% filled!)
     }
 }
