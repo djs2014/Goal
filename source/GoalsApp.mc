@@ -56,12 +56,13 @@ class GoalsApp extends Application.AppBase {
                         FTAverageCadence,
                         FTNormalizedPower,
                         FTHeartRateZone,
+                        FTIntensityFactor,
+                        FTTrainingStressScore,
                     ] as Array<Numeric or FieldLayout>
                 );
 
                 Storage.setValue("target_distance", 150); // km
                 Storage.setValue("target_calories", 2000); // calories
-                // Storage.setValue("target_average_heartrate", 120); // bpm
                 Storage.setValue("target_average_power", 200); // watts
                 Storage.setValue("target_average_speed", 28); // km/h
                 Storage.setValue("target_average_cadence", 90); // rpm
@@ -70,6 +71,8 @@ class GoalsApp extends Application.AppBase {
                 Storage.setValue("target_total_descent", 300); // meters
                 Storage.setValue("target_minutes_elapsed", 300); // minutes
                 Storage.setValue("target_heart_rate_zone", 3); // zone
+                Storage.setValue("target_intensity_factor", 0.80); // IF
+                Storage.setValue("target_training_stress_score", 100); // TSS
             }
 
             // $.gDebug = $.getStorageValue("debug", $.gDebug) as Boolean;
@@ -138,8 +141,16 @@ class GoalsApp extends Application.AppBase {
                     "target_heart_rate_zone",
                     3
                 ) as Number;
-
             $.gHeartRate.initHrZones();            
+
+            $.gTargetIntensityFactor =
+                $.getStorageValue(
+                    "target_intensity_factor", $.gTargetIntensityFactor
+                ) as Float;
+            $.gTargetTrainingStressScore =
+                $.getStorageValue(
+                    "target_training_stress_score", $.gTargetTrainingStressScore                    
+                ) as Number;
 
             $.logInfo(["User settings loaded"]);
         } catch (ex) {
@@ -171,3 +182,5 @@ var gTargetTotalDescent as Number = 300;
 var gTargetMinutesElapsed as Number = 300;
 
 var gTargetHeartRateZone as Number = 3;
+var gTargetIntensityFactor as Float = 0.80;
+var gTargetTrainingStressScore as Number = 100;

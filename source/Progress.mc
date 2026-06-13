@@ -2,9 +2,19 @@ import Toybox.Activity;
 import Toybox.Graphics;
 import Toybox.Lang;
 import Toybox.WatchUi;
+import Toybox.UserProfile;
 
 class Progress {
-    function initialize() {}
+    function initialize() {
+        var thresholdPower = UserProfile.getFunctionalThresholdPower(
+            Activity.SPORT_CYCLING
+        );
+        if (thresholdPower != null) {
+            mUserFTP = thresholdPower as Number;
+        } else {
+            mUserFTP = 0;
+        }
+    }
 
     function getValueForField(
         info as Activity.Info,
@@ -84,6 +94,11 @@ class Progress {
                     60000.0 /
                     targetValue.toFloat()
                 );
+            case FTIntensityFactor:
+                return getIntensityFactor() / targetValue.toFloat();
+            case FTTrainingStressScore:
+                return getTrainingStressScore($.getActivityValue(info, :elapsedTime, 0) as Number) /
+                    targetValue.toFloat();
             default:
                 $.logInfo([
                     "getProgressForField Unknown field type:",
@@ -160,8 +175,10 @@ class Progress {
         return elapsedDistance / targetValue.toFloat();
     }
 
-    // Fixed target values for each field type, based on user settings    
-    hidden function getTargetValueForField(fieldType as FieldType) as Number {
+    // Fixed target values for each field type, based on user settings
+    hidden function getTargetValueForField(
+        fieldType as FieldType
+    ) as Number or Float {
         switch (fieldType) {
             case FTUnknown:
                 return 0;
@@ -182,7 +199,11 @@ class Progress {
             case FTTotalDescent:
                 return $.gTargetTotalDescent;
             case FTMinutesElapsed:
-                return $.gTargetMinutesElapsed;            
+                return $.gTargetMinutesElapsed;
+            case FTIntensityFactor:
+                return $.gTargetIntensityFactor;
+            case FTTrainingStressScore:
+                return $.gTargetTrainingStressScore;
             default:
                 $.logInfo([
                     "getTargetValueForField Unknown field type:",
@@ -195,5 +216,42 @@ class Progress {
     hidden var mNormalizedPower as Number = 0;
     function setNormalizedPower(np as Number) as Void {
         mNormalizedPower = np;
+    }
+
+    hidden var mUserFTP as Number = 0;
+    function setFTP(ftp as Number) as Void {
+        mUserFTP = ftp;
+    }
+
+    function getIntensityFactor() as Float {
+        if (mUserFTP == 0) {
+            return 0.0f;
+        }
+        // $.logInfo([
+        //     "getIntensityFactor: mNormalizedPower=",
+        //     mNormalizedPower,
+        //     " mUserFTP=",
+        //     mUserFTP,
+        //     mNormalizedPower / mUserFTP.toFloat()
+        // ]);
+        return mNormalizedPower / mUserFTP.toFloat();
+    }
+
+    // return $.getActivityValue(a_info, :timerTime, 0) as Number;
+    function getTrainingStressScore(timerTime as Number) as Float {
+        if (mUserFTP == 0) {
+            return 0.0f;
+        }
+        // TSS = (sec × NP × IF) / (FTP × 3600) × 100
+        var seconds = timerTime / 1000.0;
+        var fraction = mUserFTP.toFloat() * 3600.0f;
+        if (fraction == 0) {
+            return 0.0f;
+        }
+        
+        return (
+            ((seconds * mNormalizedPower * getIntensityFactor()) / fraction) *
+            100.0f
+        );
     }
 }

@@ -34,7 +34,7 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
     } else {
       _arrayIndex = idx;
     }
-    
+
     if (id instanceof String && _item instanceof ToggleMenuItem) {
       $.setStorageValueOrArray(id, _item.isEnabled());
       return;
@@ -62,15 +62,6 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       );
       mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
       targetMenu.addItem(mi);
-
-      // mi = new WatchUi.MenuItem(
-      //   "Average heartrate|0~(bpm)",
-      //   null,
-      //   "target_average_heartrate",
-      //   null
-      // );
-      // mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
-      // targetMenu.addItem(mi);
 
       mi = new WatchUi.MenuItem(
         "Average power|0~(W)",
@@ -146,6 +137,32 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       );
       targetMenu.addItem(mi);
 
+      // FTIntensityFactor
+      // Common values for Intensity Factor (IF) in cycling range from less than 0.60 for recovery rides to 1.2 for very short,
+      // intense efforts. Typical endurance rides score between 0.60 and 0.80, while tempo training sessions usually fall
+      //between 0.75 and 0.85.
+      mi = new WatchUi.MenuItem(
+        "Intensity Factor|0.0~2.0(IF)",
+        null,
+        "target_intensity_factor",
+        null
+      );
+      mi.setSubLabel($.getStorageFloatAsString(mi.getId() as String));
+      targetMenu.addItem(mi);
+
+      // FTTrainingStressScore
+      // Common values for Training Stress Score (TSS) in cycling are as follows: 0-50 indicates a low effort (easy recovery ride),
+      // 50-100 is moderate (productive workout),
+      // 100-150 is high (hard workout), and 150+ is very high (intense session requiring recovery).
+      mi = new WatchUi.MenuItem(
+        "Training Stress Score|0~300(TSS)",
+        null,
+        "target_training_stress_score",
+        null
+      );
+      mi.setSubLabel($.getStorageFloatAsString(mi.getId() as String));
+      targetMenu.addItem(mi);
+
       WatchUi.pushView(
         targetMenu,
         new $.GeneralMenuDelegate(),
@@ -181,7 +198,7 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       mi.setSubLabel($.getLayoutByIndex(prefix, 0));
       fieldMenu.addItem(mi);
 
-      // // Divider TODO 
+      // // Divider TODO
       // mi = new WatchUi.MenuItem("Fields", null, null, null);
       // fieldMenu.addItem(mi);
 
@@ -496,6 +513,10 @@ function getFieldTypeAsString(fieldType as FieldType) as String {
     //   return "Distance to next";
     case FTDistanceOrNavDestination:
       return "Dist or Nav destination";
+    case FTTrainingStressScore:
+      return "Training stress score";
+    case FTIntensityFactor:
+      return "Intensity factor";
     default:
       return "Unknown";
   }

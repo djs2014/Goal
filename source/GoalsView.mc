@@ -643,6 +643,10 @@ class GoalsView extends WatchUi.DataField {
                 } else {
                     return "DST"; // Standard Total Distance
                 }
+            case FTIntensityFactor:
+                return "IF";
+            case FTTrainingStressScore:
+                return "TSS";                
             default:
                 return "";
         }
@@ -678,6 +682,10 @@ class GoalsView extends WatchUi.DataField {
             //     return "DISTANCE TO NEXT";
             case FTDistanceOrNavDestination:
                 return "DISTANCE OR DESTINATION";
+            case FTIntensityFactor:
+                return "INTENSITY FACTOR";
+            case FTTrainingStressScore:
+                return "TRAINING STRESS SCORE";
             default:
                 return "";
         }

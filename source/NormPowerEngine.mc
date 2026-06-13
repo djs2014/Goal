@@ -5,7 +5,7 @@ import Toybox.WatchUi;
 class NormPowerEngine {
     // Normalized power
     hidden var mPowerDataPer30Sec as Array<Number> = [] as Array<Number>;
-    hidden var globalNP as Number = 0;
+    hidden var mGlobalNP as Number = 0;
 
     // Low-memory running registers for global NP
     hidden var mSumPowerToFourth as Double = 0.0d;
@@ -16,9 +16,9 @@ class NormPowerEngine {
     // Call 1 time per second
     function compute(power as Number) as Number {
         var power30 = calculatePower30(power);
-        globalNP = calculateNormalizedPower(power30);
-        //$.logInfo("Power: " + power + " 30s Avg: " + power30 + " NP: " + globalNP);
-        return globalNP;
+        mGlobalNP = calculateNormalizedPower(power30);
+        //$.logInfo("Power: " + power + " 30s Avg: " + power30 + " NP: " + mGlobalNP);
+        return mGlobalNP;
     }
 
     hidden function calculatePower30(power as Number) as Number {

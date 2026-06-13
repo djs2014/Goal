@@ -1,3 +1,5 @@
+api level min API Level 5.2.2
+
 To Fix
 Groen is ook donker -> hsp werkt niet?
 
