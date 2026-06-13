@@ -498,6 +498,8 @@ function getFieldTypeAsString(fieldType as FieldType) as String {
       return "Distance to destination";
     case FTDistanceToNext:
       return "Distance to next";
+    case FTDistanceOrToDestination:
+      return "Distance to destination";
     default:
       return "Unknown";
   }

@@ -78,10 +78,10 @@ class GoalsView extends WatchUi.DataField {
             mPausedShowDetails = true;
             mPauseExtendedCounter = 10;
         } else if (mPauseExtendedCounter <= 0) {
-                mPauseExtendedCounter = 0;
-                mPausedShowDetails = false;
+            mPauseExtendedCounter = 0;
+            mPausedShowDetails = false;
         } else {
-            mPauseExtendedCounter -= 1;            
+            mPauseExtendedCounter -= 1;
         }
         // $.logInfo(["Compute: Demo mode:", $.gDemo, "Paused:", mPaused]);
         if (mPaused && $.gDemo) {
@@ -89,7 +89,7 @@ class GoalsView extends WatchUi.DataField {
         } else {
             mDemoStartTime = 0; // reset demo time so it starts from the beginning when toggled on
             $.gDemo = false; // reset demo flag so it doesn't keep simulating when paused
-            
+
             var power = $.getActivityValue(info, :currentPower, 0) as Number;
             var np = mNormPowerEngine.compute(power);
             mProgress.setNormalizedPower(np);
@@ -107,9 +107,8 @@ class GoalsView extends WatchUi.DataField {
         }
         // Check if we have course navigation data available by checking if distanceToDestination is non-zero
         mHasCourseNavigation =
-            ($.getActivityValue(info, :distanceToDestination, 0.0f) as
-                Float) > 0.0f;
-
+            ($.getActivityValue(info, :distanceToDestination, 0.0f) as Float) >
+            0.0f;
 
         var numBars = mProgressArray.size();
         for (var i = 0; i < numBars; i++) {
@@ -630,12 +629,11 @@ class GoalsView extends WatchUi.DataField {
                 return "D2N";
             case FTDistanceOrToDestination:
                 // Check if the user is currently navigating a course
-    
-    if (mHasCourseNavigation) {
-        return "D2D"; // Distance to Destination
-    } else {
-        return "DST"; // Standard Total Distance
-    }                
+                if (mHasCourseNavigation) {
+                    return "D2D"; // Distance to Destination
+                } else {
+                    return "DST"; // Standard Total Distance
+                }
             default:
                 return "";
         }
