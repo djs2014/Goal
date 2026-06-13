@@ -495,11 +495,11 @@ function getFieldTypeAsString(fieldType as FieldType) as String {
     case FTHeartRateZone:
       return "Heart rate zone";
     case FTDistanceToDestination:
-      return "Distance to destination";
-    case FTDistanceToNext:
-      return "Distance to next";
-    case FTDistanceOrToDestination:
-      return "Distance to destination";
+      return "Dist to destination";
+    // case FTDistanceToNext:
+    //   return "Distance to next";
+    case FTDistanceOrNavDestination:
+      return "Dist or Nav destination";
     default:
       return "Unknown";
   }

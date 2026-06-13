@@ -33,6 +33,9 @@ class GoalsView extends WatchUi.DataField {
     hidden var mProgressColors as Array<Graphics.ColorType> = new Array<
         Graphics.ColorType
     >[$.gMaxProgressColumns];
+    hidden var mProgressFieldValues as Array<Float> = new Array<
+        Float
+    >[$.gMaxProgressColumns];
 
     hidden var mProgress as Progress = new Progress();
     hidden var mNormPowerEngine as NormPowerEngine = new NormPowerEngine();
@@ -51,6 +54,7 @@ class GoalsView extends WatchUi.DataField {
         if ($.ensureArraySize(showFields, $.gShowFieldsArraySize, 0)) {
             $.setStorageValueOrArray("show_fields", showFields);
         }
+        $.logInfo(["onLayout: showFields:", showFields]);
         // Layout
         mFieldLayout = showFields[0] as FieldLayout;
         mProgressFields = showFields.slice(1, null) as Array<FieldType>;
@@ -58,6 +62,7 @@ class GoalsView extends WatchUi.DataField {
         mProgressFields = $.removeZeros(mProgressFields);
         // Add to maximum size to match mProgressArray size
         $.ensureArraySize(mProgressFields, $.gMaxProgressColumns, 0);
+        $.logInfo(["onLayout: mProgressFields:", mProgressFields]);
     }
 
     // The given info object contains all the current workout information.
@@ -102,7 +107,14 @@ class GoalsView extends WatchUi.DataField {
                         info,
                         fieldType
                     );
+                    //if ($.gShowValues) {
+                    // mProgressFieldValues[i] = mProgress.getValueForField(
+                    //     info,
+                    //     fieldType
+                    // );
+                    //}
                 }
+                // $.logInfo(["progressArray:", mProgressArray]);
             }
         }
         // Check if we have course navigation data available by checking if distanceToDestination is non-zero
@@ -363,11 +375,8 @@ class GoalsView extends WatchUi.DataField {
             if (label.length() <= fitCount) {
                 var currentUnderlyingColor = trackColor; // Default track background
                 // Check if the text is submerged in the filled part of the bar
-                if (
-                    fillHeight > 0 &&
-                    ty + dc.getFontHeight(Graphics.FONT_XTINY) / 2 >=
-                        y + h - fillHeight
-                ) {
+                
+                if (fillHeight > 0 && ty + dc.getFontHeight(Graphics.FONT_XTINY) / 2 >= y + h - fillHeight) {                    
                     currentUnderlyingColor = barColor; // It's submerged in the progress bar fill!
                 }
                 // Automatically choose the best contrasting text color
@@ -625,9 +634,9 @@ class GoalsView extends WatchUi.DataField {
                 return "HRZ";
             case FTDistanceToDestination:
                 return "D2D";
-            case FTDistanceToNext:
-                return "D2N";
-            case FTDistanceOrToDestination:
+            // case FTDistanceToNext:
+            //     return "D2N";
+            case FTDistanceOrNavDestination:
                 // Check if the user is currently navigating a course
                 if (mHasCourseNavigation) {
                     return "D2D"; // Distance to Destination
@@ -665,9 +674,9 @@ class GoalsView extends WatchUi.DataField {
                 return "HEART RATE ZONE";
             case FTDistanceToDestination:
                 return "DISTANCE TO DEST";
-            case FTDistanceToNext:
-                return "DISTANCE TO NEXT";
-            case FTDistanceOrToDestination:
+            // case FTDistanceToNext:
+            //     return "DISTANCE TO NEXT";
+            case FTDistanceOrNavDestination:
                 return "DISTANCE OR DESTINATION";
             default:
                 return "";

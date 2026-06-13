@@ -6,6 +6,17 @@ import Toybox.WatchUi;
 class Progress {
     function initialize() {}
 
+    function getValueForField(
+        info as Activity.Info,
+        fieldType as FieldType
+    ) as Float {
+        // TODO split getProgressForField
+        // part get actual value
+        // part get target value
+        // then return both and calculate progress in GoalsView
+        // should be optimized for memory usage and performance, so that we don't calculate values we don't need for the visible fields
+    }
+
     function getProgressForField(
         info as Activity.Info,
         fieldType as FieldType
@@ -14,8 +25,8 @@ class Progress {
             // Distance related fields
             case FTDistance:
             case FTDistanceToDestination:
-            case FTDistanceToNext:
-            case FTDistanceOrToDestination:
+            //case FTDistanceToNext:
+            case FTDistanceOrNavDestination:
                 return getProgressForDistance(info, fieldType);
             // heart rate related fields
             case FTAverageHeartRateZone:
@@ -31,12 +42,12 @@ class Progress {
 
         switch (fieldType) {
             case FTUnknown:
-                return 0.0f;           
+                return 0.0f;
             case FTCalories:
                 return (
                     ($.getActivityValue(info, :calories, 0) as Number) /
                     targetValue.toFloat()
-                );          
+                );
             case FTAveragePower:
                 return (
                     ($.getActivityValue(info, :averagePower, 0) as Number) /
@@ -72,28 +83,39 @@ class Progress {
                     ($.getActivityValue(info, :elapsedTime, 0) as Number) /
                     60000.0 /
                     targetValue.toFloat()
-                );            
+                );
             default:
-                $.logInfo(["Unknown field type:", fieldType]);
+                $.logInfo([
+                    "getProgressForField Unknown field type:",
+                    fieldType,
+                ]);
                 return 0.0f;
         }
     }
 
- 
-    hidden function getProgressForHeartRate( info as Info,
+    hidden function getProgressForHeartRate(
+        info as Info,
         fieldType as FieldType
     ) as Float {
         var targetValue = getTargetValueForField(fieldType);
         if (targetValue == 0) {
             return 0.0f;
         }
-        
+
         var heartRate = new HeartRate();
         heartRate.initHrZones(3);
-        var currentHeartRate = $.getActivityValue(info, :currentHeartRate, 0) as Number;
+        var currentHeartRate =
+            $.getActivityValue(info, :currentHeartRate, 0) as Number;
         var maxHeartRate = heartRate.mTargetHeartRate;
         var zone = heartRate.getHeartRateZone(currentHeartRate);
-        System.println("Current HR: " + currentHeartRate + ", Max HR: " + maxHeartRate + ", Zone: " + zone);
+        // System.println(
+        //     "Current HR: " +
+        //         currentHeartRate +
+        //         ", Max HR: " +
+        //         maxHeartRate +
+        //         ", Zone: " +
+        //         zone
+        // );
 
         switch (fieldType) {
             case FTAverageHeartRateZone:
@@ -107,7 +129,10 @@ class Progress {
                     targetValue.toFloat()
                 );
             default:
-                $.logInfo(["Unknown field type:", fieldType]);
+                $.logInfo([
+                    "getProgressForHeartRate Unknown field type:",
+                    fieldType,
+                ]);
                 return 0.0f;
         }
     }
@@ -123,33 +148,29 @@ class Progress {
         switch (fieldType) {
             case FTDistance:
                 // Target is in kilometers, but Connect IQ distance is in meters
-                targetValue =
-                    getTargetValueForField(FTDistanceOrToDestination) * 1000.0f; // convert to meters
-                elapsedDistance =
-                    $.getActivityValue(info, :elapsedDistance, 0.0f) as Float;
+                targetValue = getTargetValueForField(fieldType) * 1000.0f; // convert to meters
                 break;
             case FTDistanceToDestination:
                 targetValue =
                     $.getActivityValue(info, :distanceToDestination, 0.0f) as
                     Float; // in meters
                 break;
-            case FTDistanceToNext:
-                targetValue =
-                    $.getActivityValue(info, :distanceToNextPoint, 0.0f) as
-                    Float; // in meters
-                break;
-            case FTDistanceOrToDestination:
+            // case FTDistanceToNext:
+            //     // TODO
+            //     targetValue =
+            //         $.getActivityValue(info, :distanceToNextPoint, 0.0f) as
+            //         Float; // in meters
+            //     break;
+            case FTDistanceOrNavDestination:
                 targetValue =
                     $.getActivityValue(info, :distanceToDestination, 0.0f) as
                     Float;
                 if (targetValue == 0) {
-                    targetValue =
-                        getTargetValueForField(FTDistanceOrToDestination) *
-                        1000.0f; // convert to meters
+                    targetValue = getTargetValueForField(FTDistance) * 1000.0f; // convert to meters
                 }
                 break;
         }
-
+        
         if (targetValue == 0) {
             return 0.0f;
         }
@@ -183,7 +204,10 @@ class Progress {
                 // Target based on max heart rate for the selected zone
                 return $.gTargetAverageHeartRate;
             default:
-                $.logInfo(["Unknown field type:", fieldType]);
+                $.logInfo([
+                    "getTargetValueForField Unknown field type:",
+                    fieldType,
+                ]);
                 return 0;
         }
     }
@@ -192,5 +216,4 @@ class Progress {
     function setNormalizedPower(np as Number) as Void {
         mNormalizedPower = np;
     }
-
 }

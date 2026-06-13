@@ -130,7 +130,7 @@ function isColorLight(garminColor as Graphics.ColorType) as Boolean {
 
     // 3. Apply standard perceptual weights
     var hsp = Math.sqrt(0.299 * rSq + 0.587 * gSq + 0.114 * bSq);
-
+    
     // 4. Return true if light, false if dark
     return (hsp > 127.5);
 }

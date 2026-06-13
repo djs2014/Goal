@@ -1,3 +1,12 @@
+To Fix
+Groen is ook donker -> hsp werkt niet?
+
+Check avg heartzone -> maak vloeiend / en met zone lines?
+Divider perc 80%
+Configuratie per edgefield
+Endurance/Current stuff
+
+
 
 Color Scheme
 0% to 50%: Blue → Green
@@ -155,7 +164,7 @@ Config profiles: or add new ones + save current target values
                 break;
 
             case 2: // --- CLIMBING PROFILE ---
-                barFields = [FTTotalAscent, FTElevation, FTDistanceOrToDestination, FTAveragePower];
+                barFields = [FTTotalAscent, FTElevation, FTDistanceOrNavDestination, FTAveragePower];
                 barTargets = [1200.0f, 1800.0f, 60.0f, 240.0f]; // Targets: 1200m Climbing, 1800m Peak, 60km route, 240W pacing
                 break;
 
