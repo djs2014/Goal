@@ -22,7 +22,10 @@ class GoalsView extends WatchUi.DataField {
     hidden var mFieldLayout as FieldLayout = FLVertical;
     hidden var mPaused as Boolean = true;
     hidden var mPauseExtendedCounter as Number = 10;
-    hidden var mPausedShowDetails as Boolean = true;
+    hidden var mShowDetails as Boolean = false;
+    
+    hidden var mHasCadence as Boolean = false;
+    hidden var mCadenceZeroCounter as Number = 5;
 
     hidden var mProgressFields as Array<FieldType> = new Array<
         FieldType
@@ -80,11 +83,11 @@ class GoalsView extends WatchUi.DataField {
         }
 
         if (mPaused) {
-            mPausedShowDetails = true;
+            mShowDetails = true;
             mPauseExtendedCounter = 10;
         } else if (mPauseExtendedCounter <= 0) {
             mPauseExtendedCounter = 0;
-            mPausedShowDetails = false;
+            mShowDetails = false;
         } else {
             mPauseExtendedCounter -= 1;
         }
@@ -116,6 +119,22 @@ class GoalsView extends WatchUi.DataField {
                     //}
                 }
                 // $.logInfo(["progressArray:", mProgressArray]);
+
+                var cadence = $.getActivityValue(info, :currentCadence, 0) as Number;
+                if (!mHasCadence) {
+                    mHasCadence =cadence > 0;                        
+                } else {
+                    // If cadence is zero for x consecutive updates, then show details.do {
+                    if (cadence == 0) {
+                        mCadenceZeroCounter -= 1;
+                        if (mCadenceZeroCounter <= 0) {
+                            mShowDetails = true;
+                        }
+                    } else {
+                        mCadenceZeroCounter = 5; // reset counter
+                        mShowDetails = false;
+                    }                    
+                }
             }
         }
         // Check if we have course navigation data available by checking if distanceToDestination is non-zero
@@ -359,7 +378,7 @@ class GoalsView extends WatchUi.DataField {
                 cy - checkSize
             );
         }
-        if (mPausedShowDetails || $.gShowLabels) {
+        if ($.gShowLabels || mShowDetails) {
             // Label centered at the bottom of the bar when paused
             var tx = x + w / 2;
             var ty = y + h - dc.getFontHeight(Graphics.FONT_XTINY) - 2;
@@ -522,7 +541,7 @@ class GoalsView extends WatchUi.DataField {
                 cy - checkSize
             );
         }
-        if (mPausedShowDetails || $.gShowLabels) {
+        if ($.gShowLabels || mShowDetails) {
             var textLabel = getFieldLabelWide(fieldType);
             var font = Graphics.FONT_XTINY;
 
@@ -616,13 +635,15 @@ class GoalsView extends WatchUi.DataField {
             case FTCalories:
                 return "CAL";
             case FTAverageHeartRateZone:
-                return "AHZ";
+                return "aHRZ";
             case FTAveragePower:
-                return "APW";
+                return "aPWR";
             case FTAverageSpeed:
-                return "AVS";
+                return "aSPD";
             case FTAverageCadence:
-                return "RPM";
+                return "aCAD";
+            case FTCadence:
+                return "CAD";
             case FTNormalizedPower:
                 return "NP";
             case FTTotalAscent:
@@ -670,6 +691,8 @@ class GoalsView extends WatchUi.DataField {
                 return "AVG SPEED";
             case FTAverageCadence:
                 return "AVG CADENCE";
+            case FTCadence:
+                return "CADENCE";
             case FTNormalizedPower:
                 return "NORMALIZED POWER";
             case FTTotalAscent:

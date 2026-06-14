@@ -75,6 +75,11 @@ class Progress {
                     ($.getActivityValue(info, :averageCadence, 0) as Number) /
                     targetValue.toFloat()
                 );
+            case FTCadence:
+                return (
+                    ($.getActivityValue(info, :currentCadence, 0) as Number) /
+                    targetValue.toFloat()
+                );
             case FTNormalizedPower:
                 return mNormalizedPower / targetValue.toFloat();
             case FTTotalAscent:
@@ -192,6 +197,8 @@ class Progress {
                 return $.gTargetAverageSpeed;
             case FTAverageCadence:
                 return $.gTargetAverageCadence;
+            case FTCadence:
+                return $.gTargetCadence;
             case FTNormalizedPower:
                 return $.gTargetNormalizedPower;
             case FTTotalAscent:

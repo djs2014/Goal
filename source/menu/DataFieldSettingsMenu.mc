@@ -89,6 +89,15 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       );
       mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
       targetMenu.addItem(mi);
+      
+      mi = new WatchUi.MenuItem(
+        "Cadence|0~(rpm)",
+        null,
+        "target_cadence",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      targetMenu.addItem(mi);
 
       mi = new WatchUi.MenuItem(
         "Normalized power|0~(W)",

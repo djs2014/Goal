@@ -10,7 +10,7 @@ enum FieldLayout {
 // TODO How to get a rational progress value for this field:
 // FTDistanceToNext = , 
 
-var FieldTypeCount = 16; // incl the 0
+var FieldTypeCount = 17; // incl the 0
 enum FieldType {
     FTUnknown = 0,
     FTDistance = 1,
@@ -28,8 +28,5 @@ enum FieldType {
     FTDistanceOrNavDestination = 13, 
     FTTrainingStressScore = 14,
     FTIntensityFactor = 15,
-    // TODO
-    FTElevation = 16,
-    FTTimeToDestination = 17,
-    FTTimeOfDay = 18
+    FTCadence = 16,    
 }

@@ -3,10 +3,11 @@ api level min API Level 5.2.2
 To Fix
 Groen is ook donker -> hsp werkt niet?
 
+arc layout
 Divider perc 80%
 Configuratie per edgefield
 Endurance/Current stuff
-
+autoupdate targets -> use reached values of last as goal
 
 
 Color Scheme
@@ -18,18 +19,6 @@ dark/white/auto background
 
 Abbreviations:
 
-Field Type,Abbreviation,Alternative,Why it works
-FTDistance,DST,KM / MI,Standard cycling shorthand.
-FTCalories,CAL,KCAL,Universally recognized.
-FTAverageHeartRateZone,AHR,AVG ♥,Distinguishes from live HR.
-FTAveragePower,APW,AV W,Clean and professional.
-FTAverageSpeed,AVS,SPD,"Keeps the ""Average"" context."
-FTAverageCadence,CAD,RPM,Cyclists instantly recognize RPM.
-FTNormalizedPower,NP,NP W,Standardized industry acronym.
-FTTotalAscent,ASC,▲,Great for climbers.
-FTTotalDescent,DSC,▼,Keeps symmetry with Ascent.
-FTMinutesElapsed,TIM,MIN,Direct and simple.
-FTHeartRateZone,HRZ,ZON,"Clearly indicates it's the Zone, not the BPM."
 
 
 ----------------TODO
@@ -55,54 +44,6 @@ x FTTrainingStressScore (TSS)
 
     Garmin API: info.trainingStressScore
 
-2. Time & Duration Targets
-
-You already have minutes elapsed, but these two targets completely change how you pace an endurance event or a timed interval.
-
-
-FTTimeOfDay (TOD)
-
-    Abbreviation: TOD or CLK
-
-    The Target: A specific "curfew" or drop-dead time (e.g., “I need to be home by 12:00 PM”). The bar fills up as the clock ticks closer to your deadline.
-
-    Garmin API: System.getClockTime()
-
-FTTimeAheadBehind (TAB)
-
-    Abbreviation: A/B or GAP
-
-    The Target: If riding a Garmin Course with a "Virtual Partner," this target bar acts as a visual tug-of-war. 50% means you are perfectly tied with your ghost racer. Over 50% means you are pulling away into the "overdrive" midnight red!
-
-    Garmin API: info.timeAheadWithVirtualPartner
-
-3. Advanced Navigation & Climbing Targets
-
-Since you've cracked the navigation tracking code, these are massive for alpine climbing or long gravel events.
-
-FTElevation (ALT)
-
-    Abbreviation: ALT or ELE
-
-    The Target: Hitting the summit of a known mountain pass (e.g., target is 2,000m). The bar climbs as you scale the mountain.
-
-    Garmin API: info.altitude
-
-FTRemainingAscent (VAM / REM)
-
-    Abbreviation: ASC or REM
-
-    The Target: Setting a countdown bar for total vertical feet/meters left until the climbing is over. (The bar empties or fills based on how close you are to finishing the route's total vertical profile).
-
-    Garmin API: info.totalAscentRemaining
-
-FTTimeToDestination (ETA)
-
-    Abbreviation: ETA or ETE
-
-    The Target: Pacing against your expected duration (e.g., a target of 4 hours).
-
-    Garmin API: info.timeToDestination
 
 
 
@@ -186,3 +127,30 @@ When you first roll out of your driveway, your actual heart rate will be lower t
 With the code written as-is, calculateZoneProgress safely returns 0.0f (an empty track), which is perfect.
 
 However, if you want some visual feedback during your warmup, you can add a tiny fallback: if your heart rate is below Zone 1, you can calculate your progress from a resting heart rate (e.g., 60 bpm) up to your Zone 1 floor. That way, you get a "Warmup" bar before the real intervals start!
+
+
+
+1. The Dial / Gauge Layout (Semi-Circular Arc)
+
+Instead of a straight line, your progress fills up an arc or a semi-circle. This is the ultimate "tachometer" look for real-time metrics like Heart Rate or Current Power.
+How it works in Monkey C:
+
+You use dc.drawArc() to draw the empty track, and then overlay a colored arc using your dynamic progress math.
+
+    The Math: A circle is 360∘. A gorgeous dashboard gauge usually spans from 210∘ (bottom left) to −30∘ (bottom right), giving you a sweeping 240∘ active tracking zone.
+
+    Progress Formula: Multiply your progress fraction by the total arc angle.
+    Current Angle=Start Angle−(Progress×240)
+// Draws a curving dashboard dial
+var startAngle = 210;
+var totalSweep = 240;
+var currentSweep = (progress > 1.0 ? 1.0 : progress) * totalSweep;
+var endAngle = startAngle - currentSweep;
+
+// Track
+dc.setColor(trackColor, Gfx.COLOR_TRANSPARENT);
+dc.drawArc(centerX, centerY, radius, Gfx.ARC_COUNTER_CLOCKWISE, startAngle, startAngle - totalSweep);
+
+// Fill
+dc.setColor(barColor, Gfx.COLOR_TRANSPARENT);
+dc.drawArc(centerX, centerY, radius, Gfx.ARC_COUNTER_CLOCKWISE, startAngle, endAngle);

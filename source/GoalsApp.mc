@@ -41,7 +41,7 @@ class GoalsApp extends Application.AppBase {
             var reset = Storage.getValue("resetDefaults");
             if (reset == null || (reset as Boolean)) {
                 Storage.setValue("resetDefaults", false);
-                Storage.setValue("show_labels", true);
+                Storage.setValue("show_labels", false);
                 Storage.setValue("demo", false);
 
                 Storage.setValue(
@@ -70,9 +70,10 @@ class GoalsApp extends Application.AppBase {
                 Storage.setValue("target_total_ascent", 300); // meters
                 Storage.setValue("target_total_descent", 300); // meters
                 Storage.setValue("target_minutes_elapsed", 300); // minutes
-                Storage.setValue("target_heart_rate_zone", 3); // zone
+                Storage.setValue("target_heart_rate_zone", 2); // zone
                 Storage.setValue("target_intensity_factor", 0.80); // IF
                 Storage.setValue("target_training_stress_score", 100); // TSS
+                Storage.setValue("target_cadence", 90); // rpm
             }
 
             // $.gDebug = $.getStorageValue("debug", $.gDebug) as Boolean;
@@ -116,6 +117,11 @@ class GoalsApp extends Application.AppBase {
                     "target_average_cadence",
                     $.gTargetAverageCadence
                 ) as Number;
+            $.gTargetCadence =
+                $.getStorageValue(
+                    "target_cadence",
+                    $.gTargetCadence
+                ) as Number;
             $.gTargetNormalizedPower =
                 $.getStorageValue(
                     "target_normalized_power",
@@ -139,7 +145,7 @@ class GoalsApp extends Application.AppBase {
             $.gTargetHeartRateZone =
                 $.getStorageValue(
                     "target_heart_rate_zone",
-                    3
+                    2
                 ) as Number;
             $.gHeartRate.initHrZones();            
 
@@ -176,11 +182,13 @@ var gTargetCalories as Number = 2000;
 var gTargetAveragePower as Number = 200;
 var gTargetAverageSpeed as Number = 28;
 var gTargetAverageCadence as Number = 90;
+var gTargetCadence as Number = 90;
+
 var gTargetNormalizedPower as Number = 220;
 var gTargetTotalAscent as Number = 300;
 var gTargetTotalDescent as Number = 300;
 var gTargetMinutesElapsed as Number = 300;
 
-var gTargetHeartRateZone as Number = 3;
+var gTargetHeartRateZone as Number = 2;
 var gTargetIntensityFactor as Float = 0.80;
 var gTargetTrainingStressScore as Number = 100;
