@@ -59,6 +59,7 @@ function logInfo(info) as Void {
   System.println(timeString);
 }
 
+// TODO add start index 
 function removeZeros(sourceArray as Array<Numeric>) as Array<Numeric> {
     var size = sourceArray.size();
     

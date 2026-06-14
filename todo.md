@@ -2,6 +2,7 @@ api level min API Level 5.2.2
 
 bug dist to dest / next ->
 show values -> detect color on background
+??remove zeros in show fields
 
 To Fix
 Groen is ook donker -> hsp werkt niet?

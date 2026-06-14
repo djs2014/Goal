@@ -72,11 +72,7 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
       advMenu.addItem(mi);
 
-      WatchUi.pushView(
-        advMenu,
-        new $.GeneralMenuDelegate(),
-        WatchUi.SLIDE_UP
-      );
+      WatchUi.pushView(advMenu, new $.GeneralMenuDelegate(), WatchUi.SLIDE_UP);
       return;
     }
 
@@ -240,14 +236,17 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       return;
     }
 
-    if (id instanceof String && id.equals("show_fields")) {
+    if (id instanceof String && (id.equals("show_one_field") ||
+        id.equals("show_large_field") ||
+        id.equals("show_wide_field") ||
+        id.equals("show_small_field"))) {
       var label = menuItem.getLabel();
-      var prefix = id.toString();
+      //var prefix = id.toString();
       var fieldMenu = new WatchUi.Menu2({ :title => label + " items" });
 
       var storageKey = id.toString();
 
-      var array = $.getStorageValue(storageKey, []) as Array<Number or Boolean>;
+      var array = $.getStorageValue(storageKey, []) as Array<Numeric or Boolean or FieldLayout>;
       // Check size
       if (
         $.ensureArraySize(
@@ -261,26 +260,70 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
           array as Array<Application.PropertyValueType>
         );
       }
+      var index = 0;
 
       // Layout
-      var mi = new WatchUi.MenuItem("Layout", null, prefix + "|0", null);
-      mi.setSubLabel($.getLayoutByIndex(prefix, 0));
-      fieldMenu.addItem(mi);
+      $.addMenuItem(
+        fieldMenu,
+        "Layout", // Don't change this label, it's used in the delegate to identify column fields
+        $.getFieldLayoutAsString(array[index] as FieldLayout),
+        getKeyAndIndex(storageKey, index)
+      );
 
-      // // Divider TODO
-      // mi = new WatchUi.MenuItem("Fields", null, null, null);
+      // var mi = new WatchUi.MenuItem("Layout", null, prefix + "|" + index.format("%d"), null);
+      // mi.setSubLabel($.getLayoutByIndex(prefix, 0));
       // fieldMenu.addItem(mi);
 
+      // Show labels
+      index = 1;
+      $.addToggleMenuItem(
+        fieldMenu,
+        "Show labels",
+        null,
+        $.getKeyAndIndex(storageKey, index),
+        array[index] == true
+      );
+
+      // Show values
+      index = 2;
+      $.addToggleMenuItem(
+        fieldMenu,
+        "Show values",
+        null,
+        $.getKeyAndIndex(storageKey, index),
+        array[index] == true
+      );
+
+      // Gap columns
+      index = 3;
+      $.addMenuItem(
+        fieldMenu,
+        "Gap columns|0~20(pixels)",
+        (array[index] as Number).toString(),
+        getKeyAndIndex(storageKey, index)
+      );
+
+      // divider at %
+      index = 4;
+      $.addMenuItem(
+        fieldMenu,
+        "Divider at|0~100(%)",
+        (array[index] as Number).toString(),
+        getKeyAndIndex(storageKey, index)
+      );
+
+      System.println(array);
+
       // Bars
-      for (var i = 1; i < $.gShowFieldsArraySize; i++) {
-        mi = new WatchUi.MenuItem(
-          "Bar " + i,
-          null,
-          prefix + "|" + i.format("%d"),
-          null
+      index = 5;
+      for (var i = index; i < $.gShowFieldsArraySize; i++) {
+        var colNumber = i - index + 1;
+        $.addMenuItem(
+          fieldMenu,
+          "Bar " + colNumber, // Don't change this label, it's used in the delegate to identify column fields
+          $.getFieldTypeAsString(array[i] as FieldType),
+          getKeyAndIndex(storageKey, i)
         );
-        mi.setSubLabel($.getFieldByIndex(prefix, i));
-        fieldMenu.addItem(mi);
       }
 
       WatchUi.pushView(
@@ -290,17 +333,7 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       );
       return;
     }
-
-    // if (id instanceof String && menuItem instanceof ToggleMenuItem) {
-    //   $.setStorageValueOrArray(id, menuItem.isEnabled());
-    //   return;
-    // }
-
-    //  if (id instanceof String && item instanceof ToggleMenuItem) {
-    //   Storage.setValue(id as String, item.isEnabled());
-    //   item.setSubLabel($.subMenuToggleMenuItem(id as String));
-    //   return;
-    // }
+    
   }
 
   function onSelectedSelection(
@@ -335,7 +368,9 @@ class GeneralMenuDelegate extends WatchUi.Menu2InputDelegate {
       _arrayIndex = idx;
     }
 
-    if (id instanceof String && id.find("|") != null) {
+    // Column field selection
+    if (id instanceof String && id.find("|") != null 
+    && (_item.getLabel().find("Bar") != null || _item.getLabel().find("Layout") != null)) {
       var prefix = stringLeft(id, "|", "");
       var index = stringRight(id, "|", "").toNumber();
       if (prefix == "" || index == null) {

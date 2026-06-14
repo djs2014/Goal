@@ -32,8 +32,12 @@ class DataFieldSettingsView extends WatchUi.View {
       dc.getWidth() / 2,
       dc.getHeight() / 2 - 30,
       Graphics.FONT_SMALL,
-      "Press Menu \nfor settings\nCIQ " + versionString + "\nDevice " + partNumber
-      + "\nFirmware " + firmwareVersionString,
+      "Press Menu \nfor settings\nCIQ " +
+        versionString +
+        "\nDevice " +
+        partNumber +
+        "\nFirmware " +
+        firmwareVersionString,
       Graphics.TEXT_JUSTIFY_CENTER
     );
   }
@@ -51,35 +55,55 @@ class DataFieldSettingsDelegate extends WatchUi.BehaviorDelegate {
   function onMenu() as Boolean {
     var menu = new $.DataFieldSettingsMenu();
     var mi;
-    
+
     mi = new WatchUi.MenuItem("Targets", null, "targets", null);
     menu.addItem(mi);
 
-    mi = new WatchUi.MenuItem("Show fields", null, "show_fields", null);    
+    mi = new WatchUi.MenuItem("One page field", null, "show_one_field", null);
+    menu.addItem(mi);
+    mi = new WatchUi.MenuItem("Large field", null, "show_large_field", null);
+    menu.addItem(mi);
+    mi = new WatchUi.MenuItem("Wide field", null, "show_wide_field", null);
+    menu.addItem(mi);
+    mi = new WatchUi.MenuItem("Small field", null, "show_small_field", null);
     menu.addItem(mi);
 
-    mi = new WatchUi.MenuItem("Advanced", null, "advanced", null);    
+    mi = new WatchUi.MenuItem("Advanced", null, "advanced", null);
     menu.addItem(mi);
-    
+
     var boolean = false;
 
-    boolean = Storage.getValue("show_labels") ? true : false;
-    menu.addItem(new WatchUi.ToggleMenuItem("Show labels", null, "show_labels", boolean, null));
-    
-    boolean = Storage.getValue("show_values") ? true : false;
-    menu.addItem(new WatchUi.ToggleMenuItem("Show values", null, "show_values", boolean, null));
-    
     boolean = Storage.getValue("demo") ? true : false;
-    menu.addItem(new WatchUi.ToggleMenuItem("Demo (if paused)", null, "demo", boolean, null));
+    menu.addItem(
+      new WatchUi.ToggleMenuItem(
+        "Demo (if paused)",
+        null,
+        "demo",
+        boolean,
+        null
+      )
+    );
 
     boolean = Storage.getValue("resetDefaults") ? true : false;
-    menu.addItem(new WatchUi.ToggleMenuItem("Reset to defaults", null, "resetDefaults", boolean, null));
+    menu.addItem(
+      new WatchUi.ToggleMenuItem(
+        "Reset to defaults",
+        null,
+        "resetDefaults",
+        boolean,
+        null
+      )
+    );
 
-    WatchUi.pushView(menu, new $.DataFieldSettingsMenuDelegate(), WatchUi.SLIDE_IMMEDIATE);
+    WatchUi.pushView(
+      menu,
+      new $.DataFieldSettingsMenuDelegate(),
+      WatchUi.SLIDE_IMMEDIATE
+    );
     return true;
   }
 
-  function onBack() as Boolean {    
+  function onBack() as Boolean {
     getApp().onSettingsChanged();
     $.gExitedMenu = true;
     return false;
@@ -93,4 +117,3 @@ function getStorageNumberAsString(key as String) as String {
 function getStorageFloatAsString(key as String) as String {
   return (getStorageValue(key, 0.0f) as Float).format("%.1f");
 }
-

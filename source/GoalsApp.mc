@@ -41,23 +41,73 @@ class GoalsApp extends Application.AppBase {
             var reset = Storage.getValue("resetDefaults");
             if (reset == null || (reset as Boolean)) {
                 Storage.setValue("resetDefaults", false);
-                Storage.setValue("show_labels", false);
+                // Storage.setValue("show_labels", false);
                 Storage.setValue("demo", false);
                 Storage.setValue("cadence_counter", 3);
-                Storage.setValue("gap_columns_horizontal", 8);
-                Storage.setValue("gap_columns_vertical", 8);
 
                 Storage.setValue(
-                    "show_fields",
+                    "show_one_field",
                     [
-                        FLVertical,
+                        FLHorizontal, // layout
+                        true, // show labels
+                        true, // show values
+                        4, // gap
+                        80, // divider at
+                        FTDistanceOrNavDestination,
+                        FTTrainingStressScore,
+                        FTAverageSpeed,
+                        FTAveragePower,
+                        FTAverageCadence,
+                        FTAverageHeartRateZone,
+                    ] as Array<Numeric or FieldLayout or Boolean>
+                );
+                Storage.setValue(
+                    "show_large_field",
+                    [
+                        FLVertical, // layout
+                        false, // show labels
+                        false, // show values
+                        8, // gap
+                        80, // divider at
                         FTDistanceOrNavDestination,
                         FTTrainingStressScore,
                         FTSpeed,
-                        FTPower,                        
+                        FTPower,
                         FTCadence,
                         FTHeartRateZone,
-                    ] as Array<Numeric or FieldLayout>
+                    ] as Array<Numeric or FieldLayout or Boolean>
+                );
+                Storage.setValue(
+                    "show_wide_field",
+                    [
+                        FLVertical, // layout
+                        false, // show labels
+                        false, // show values
+                        8, // gap
+                        80, // divider at
+                        FTDistanceOrNavDestination,
+                        FTTrainingStressScore,
+                        FTSpeed,
+                        FTPower,
+                        FTCadence,
+                        FTHeartRateZone,
+                    ] as Array<Numeric or FieldLayout or Boolean>
+                );
+                Storage.setValue(
+                    "show_small_field",
+                    [
+                        FLHorizontal, // layout
+                        false, // show labels
+                        false, // show values
+                        1, // gap
+                        80, // divider at
+                        FTDistanceOrNavDestination,
+                        FTTrainingStressScore,
+                        FTSpeed,
+                        FTPower,
+                        FTCadence,
+                        FTHeartRateZone,
+                    ] as Array<Numeric or FieldLayout or Boolean>
                 );
 
                 Storage.setValue("target_distance", 150); // km
@@ -79,17 +129,34 @@ class GoalsApp extends Application.AppBase {
 
             // $.gDebug = $.getStorageValue("debug", $.gDebug) as Boolean;
 
-            var showFields =
-                $.getStorageValue("show_fields", [$.gShowFieldsArraySize]) as
-                Array<Numeric or FieldLayout>;
+            var show_OneField =
+                $.getStorageValue("show_one_field", [$.gShowFieldsArraySize]) as
+                Array<Numeric or Boolean or FieldLayout>;
+            var show_LargeField =
+                $.getStorageValue("show_large_field", [
+                    $.gShowFieldsArraySize,
+                ]) as Array<Numeric or Boolean or FieldLayout>;
+            var show_WideField =
+                $.getStorageValue("show_wide_field", [
+                    $.gShowFieldsArraySize,
+                ]) as Array<Numeric or Boolean or FieldLayout>;
+            var show_SmallField =
+                $.getStorageValue("show_small_field", [
+                    $.gShowFieldsArraySize,
+                ]) as Array<Numeric or Boolean or FieldLayout>;
 
-            if ($.ensureArraySize(showFields, $.gShowFieldsArraySize, 0)) {
-                $.setStorageValueOrArray("show_fields", showFields);
+            if ($.ensureArraySize(show_OneField, $.gShowFieldsArraySize, 0)) {
+                $.setStorageValueOrArray("show_one_field", show_OneField);
             }
-            $.gShowLabels =
-                $.getStorageValue("show_labels", $.gShowLabels) as Boolean;
-            $.gShowValues =
-                $.getStorageValue("show_values", $.gShowValues) as Boolean;
+            if ($.ensureArraySize(show_LargeField, $.gShowFieldsArraySize, 0)) {
+                $.setStorageValueOrArray("show_large_field", show_LargeField);
+            }
+            if ($.ensureArraySize(show_WideField, $.gShowFieldsArraySize, 0)) {
+                $.setStorageValueOrArray("show_wide_field", show_WideField);
+            }
+            if ($.ensureArraySize(show_SmallField, $.gShowFieldsArraySize, 0)) {
+                $.setStorageValueOrArray("show_small_field", show_SmallField);
+            }
 
             $.gDemo = $.getStorageValue("demo", false) as Boolean;
             $.logInfo(["Demo mode:", $.gDemo]);
@@ -100,12 +167,6 @@ class GoalsApp extends Application.AppBase {
             $.gCadenceCounter =
                 $.getStorageValue("cadence_counter", $.gCadenceCounter) as
                 Number;
-            $.gGapColumnsHorizontal =
-                $.getStorageValue("gap_columns_horizontal", $.gGapColumnsHorizontal) as
-                Number;
-            $.gGapColumnsVertical =
-                $.getStorageValue("gap_columns_vertical", $.gGapColumnsVertical) as
-                Number;    
 
             $.gTargetDistance =
                 $.getStorageValue("target_distance", $.gTargetDistance) as
@@ -186,15 +247,14 @@ function getApp() as GoalsApp {
 }
 
 var gHeartRate = new HeartRate();
-// +1 for the layout option
-var gShowFieldsArraySize as Number = $.gMaxProgressColumns + 1;
-var gDemo as Boolean = false;
-var gShowLabels as Boolean = true;
-var gShowValues as Boolean = false;
 
-var gCadenceCounter as Number = 3; 
-var gGapColumnsHorizontal as Number = 8;
-var gGapColumnsVertical as Number = 8;
+// +5 for the layout and other settings
+var gPreambleFieldCount as Number = 5;
+var gShowFieldsArraySize as Number =
+    $.gPreambleFieldCount + $.gMaxProgressColumns;
+
+var gDemo as Boolean = false;
+var gCadenceCounter as Number = 3;
 
 var gTargetDistance as Number = 150;
 var gTargetCalories as Number = 2000;

@@ -48,19 +48,51 @@ class GoalsView extends WatchUi.DataField {
         DataField.initialize();
     }
 
-    // Set your layout here. Anytime the size of obscurity of
-    // the draw context is changed this will be called.
+    hidden var mCurrentEdgeField as EdgeField = EfLarge;
+    hidden var mFieldShowLabels as Boolean = false;
+    hidden var mFieldShowValues as Boolean = false;
+    hidden var mFieldColumnGap as Number = 8;
+    hidden var mFieldDivider as Number = 80;
     function onLayout(dc as Graphics.Dc) as Void {
-        var showFields =
-            $.getStorageValue("show_fields", [$.gShowFieldsArraySize]) as
-            Array<Numeric or FieldLayout>;
-        if ($.ensureArraySize(showFields, $.gShowFieldsArraySize, 0)) {
-            $.setStorageValueOrArray("show_fields", showFields);
+        mCurrentEdgeField = $.getEdgeField(dc);
+
+        var showFields = [] as Array<Numeric or FieldLayout or Boolean>;
+        if (mCurrentEdgeField == EfOne) {
+            showFields =
+                $.getStorageValue("show_one_field", [$.gShowFieldsArraySize]) as
+                Array<Numeric or FieldLayout or Boolean>;
+        } else if (mCurrentEdgeField == EfLarge) {
+            showFields =
+                $.getStorageValue("show_large_field", [
+                    $.gShowFieldsArraySize,
+                ]) as Array<Numeric or FieldLayout or Boolean>;
+        } else if (mCurrentEdgeField == EfWide) {
+            showFields =
+                $.getStorageValue("show_wide_field", [
+                    $.gShowFieldsArraySize,
+                ]) as Array<Numeric or FieldLayout or Boolean>;
+        } else if (mCurrentEdgeField == EfSmall) {
+            showFields =
+                $.getStorageValue("show_small_field", [
+                    $.gShowFieldsArraySize,
+                ]) as Array<Numeric or FieldLayout or Boolean>;
+        } else {
+            showFields =
+                $.getStorageValue("show_one_field", [$.gShowFieldsArraySize]) as
+                Array<Numeric or FieldLayout or Boolean>;
         }
+        
         $.logInfo(["onLayout: showFields:", showFields]);
-        // Layout
+
         mFieldLayout = showFields[0] as FieldLayout;
-        mProgressFields = showFields.slice(1, null) as Array<FieldType>;
+        mFieldShowLabels = showFields[1] == true;
+        mFieldShowValues = showFields[2] == true;
+        mFieldColumnGap = showFields[3] as Number;
+        mFieldDivider = showFields[4] as Number;
+
+        mProgressFields =
+            showFields.slice($.gPreambleFieldCount, null) as Array<FieldType>;
+
         // Remove the entries `where no field is assigned (value of 0)
         mProgressFields = $.removeZeros(mProgressFields);
         // Add to maximum size to match mProgressArray size
@@ -225,7 +257,7 @@ class GoalsView extends WatchUi.DataField {
         switch (mFieldLayout) {
             case FLVertical:
                 // Calculate dynamic width for vertical pillars side-by-side
-                gap = $.gGapColumnsVertical; // Use user-defined gap for vertical layout
+                gap = mFieldColumnGap; // Use user-defined gap for vertical layout
                 var availableWidth = screenW - margin * 2;
                 var totalGapWidth = (numBars - 1) * gap;
                 var barWidthVertical = (
@@ -254,7 +286,7 @@ class GoalsView extends WatchUi.DataField {
                 break;
             default:
             case FLHorizontal:
-                gap = $.gGapColumnsHorizontal; // Use user-defined gap for horizontal layout
+                gap = mFieldColumnGap; // Use user-defined gap for horizontal layout
                 // Calculate dynamic height for horizontal rows stacked vertically
                 var availableHeight = screenH - margin * 2;
                 var totalGapHeight = (numBars - 1) * gap;
@@ -381,7 +413,7 @@ class GoalsView extends WatchUi.DataField {
                 cy - checkSize
             );
         }
-        if ($.gShowLabels || mShowDetails) {
+        if (mFieldShowLabels || mShowDetails) {
             // Label centered at the bottom of the bar when paused
             var tx = x + w / 2;
             var ty = y + h - dc.getFontHeight(Graphics.FONT_XTINY) - 2;
@@ -549,7 +581,7 @@ class GoalsView extends WatchUi.DataField {
             );
         }
 
-        if ($.gShowLabels || mShowDetails) {
+        if (mFieldShowLabels || mShowDetails) {
             var textLabel = getFieldLabelWide(fieldType);
             var font = Graphics.FONT_XTINY;
 
@@ -603,7 +635,7 @@ class GoalsView extends WatchUi.DataField {
         }
 
         // TODO fix color contrast for the value text when it is over the filled part of the bar
-        if (progress < 1.0 && $.gShowValues && mShowDetails) {
+        if (progress < 1.0 && mFieldShowValues && mShowDetails) {
             // Show actual values for the fieldType if requested using the same color as last character for the label text
             var idxField = mProgressFields.indexOf(fieldType);
             if (idxField >= 0 && idxField < mProgressFieldValues.size()) {
@@ -823,9 +855,7 @@ class GoalsView extends WatchUi.DataField {
             :border => darkBackground
                 ? COLOR_SILVER_LIGHT
                 : Graphics.COLOR_DK_GRAY,
-            :track => darkBackground
-                ? Graphics.COLOR_DK_GRAY
-                : COLOR_PLATINUM,
+            :track => darkBackground ? Graphics.COLOR_DK_GRAY : COLOR_PLATINUM,
         };
     }
 }
