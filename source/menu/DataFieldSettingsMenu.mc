@@ -40,6 +40,46 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       return;
     }
 
+    if (id instanceof String && id.equals("advanced")) {
+      var advMenu = new WatchUi.Menu2({ :title => "Advanced" });
+
+      var mi;
+
+      mi = new WatchUi.MenuItem(
+        "Cadence counter|0~5(seconds)",
+        null,
+        "cadence_counter",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      advMenu.addItem(mi);
+
+      mi = new WatchUi.MenuItem(
+        "Gap columns horizontal|0-20(pixels)",
+        null,
+        "gap_columns_horizontal",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      advMenu.addItem(mi);
+
+      mi = new WatchUi.MenuItem(
+        "Gap columns vertical|0-20(pixels)",
+        null,
+        "gap_columns_vertical",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      advMenu.addItem(mi);
+
+      WatchUi.pushView(
+        advMenu,
+        new $.GeneralMenuDelegate(),
+        WatchUi.SLIDE_UP
+      );
+      return;
+    }
+
     if (id instanceof String && id.equals("targets")) {
       var targetMenu = new WatchUi.Menu2({ :title => "Targets / Goals" });
 
@@ -64,11 +104,31 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       targetMenu.addItem(mi);
 
       mi = new WatchUi.MenuItem(
+        "Power, 0 is profile ftp|0~(watts)",
+        null,
+        "target_power",
+        null
+      );
+      var targetPower = $.getStorageValue(mi.getId() as String, 0) as Number;
+      if (targetPower == 0) {
+        mi.setSubLabel(
+          "profile ftp: " + $.getUserFtp().format("%d") + " watts"
+        );
+      } else {
+        mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      }
+      targetMenu.addItem(mi);
+
+      mi = new WatchUi.MenuItem(
         "Average power|0~(W)",
         null,
         "target_average_power",
         null
       );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      targetMenu.addItem(mi);
+
+      mi = new WatchUi.MenuItem("Speed|0~(km/h)", null, "target_speed", null);
       mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
       targetMenu.addItem(mi);
 
@@ -82,18 +142,18 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       targetMenu.addItem(mi);
 
       mi = new WatchUi.MenuItem(
-        "Average cadence|0~(rpm)",
+        "Cadence|0~(rpm)",
         null,
-        "target_average_cadence",
+        "target_cadence",
         null
       );
       mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
       targetMenu.addItem(mi);
-      
+
       mi = new WatchUi.MenuItem(
-        "Cadence|0~(rpm)",
+        "Average cadence|0~(rpm)",
         null,
-        "target_cadence",
+        "target_average_cadence",
         null
       );
       mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
@@ -283,7 +343,6 @@ class GeneralMenuDelegate extends WatchUi.Menu2InputDelegate {
       }
       var idxLayout = index as Number;
       if (idxLayout == 0) {
-        show_labels;
         var sp = new selectionMenuPicker("Field layout", id as String);
         for (var i = 0; i < $.FieldLayoutCount; i++) {
           sp.add($.getFieldLayoutAsString(i as FieldLayout), null, i);
@@ -500,6 +559,8 @@ function getFieldTypeAsString(fieldType as FieldType) as String {
       return "Calories";
     case FTAverageHeartRateZone:
       return "Avg heartrate";
+    case FTPower:
+      return "Power";
     case FTAveragePower:
       return "Avg power";
     case FTAverageSpeed:
@@ -526,6 +587,10 @@ function getFieldTypeAsString(fieldType as FieldType) as String {
       return "Training stress score";
     case FTIntensityFactor:
       return "Intensity factor";
+    case FTCadence:
+      return "Cadence";
+    case FTSpeed:
+      return "Speed";
     default:
       return "Unknown";
   }

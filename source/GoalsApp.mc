@@ -43,27 +43,28 @@ class GoalsApp extends Application.AppBase {
                 Storage.setValue("resetDefaults", false);
                 Storage.setValue("show_labels", false);
                 Storage.setValue("demo", false);
+                Storage.setValue("cadence_counter", 3);
+                Storage.setValue("gap_columns_horizontal", 8);
+                Storage.setValue("gap_columns_vertical", 8);
 
                 Storage.setValue(
                     "show_fields",
                     [
                         FLVertical,
-                        FTDistance,
-                        FTCalories,
-                        FTMinutesElapsed,
-                        FTTotalAscent,
-                        FTAverageSpeed,
-                        FTAverageCadence,
-                        FTNormalizedPower,
-                        FTHeartRateZone,
-                        FTIntensityFactor,
+                        FTDistanceOrNavDestination,
                         FTTrainingStressScore,
+                        FTSpeed,
+                        FTPower,                        
+                        FTCadence,
+                        FTHeartRateZone,
                     ] as Array<Numeric or FieldLayout>
                 );
 
                 Storage.setValue("target_distance", 150); // km
                 Storage.setValue("target_calories", 2000); // calories
+                Storage.setValue("target_power", 0); // watts
                 Storage.setValue("target_average_power", 200); // watts
+                Storage.setValue("target_speed", 30); // km/h
                 Storage.setValue("target_average_speed", 28); // km/h
                 Storage.setValue("target_average_cadence", 90); // rpm
                 Storage.setValue("target_normalized_power", 220); // watts
@@ -71,7 +72,7 @@ class GoalsApp extends Application.AppBase {
                 Storage.setValue("target_total_descent", 300); // meters
                 Storage.setValue("target_minutes_elapsed", 300); // minutes
                 Storage.setValue("target_heart_rate_zone", 2); // zone
-                Storage.setValue("target_intensity_factor", 0.80); // IF
+                Storage.setValue("target_intensity_factor", 0.8); // IF
                 Storage.setValue("target_training_stress_score", 100); // TSS
                 Storage.setValue("target_cadence", 90); // rpm
             }
@@ -89,19 +90,35 @@ class GoalsApp extends Application.AppBase {
                 $.getStorageValue("show_labels", $.gShowLabels) as Boolean;
             $.gShowValues =
                 $.getStorageValue("show_values", $.gShowValues) as Boolean;
-                
+
             $.gDemo = $.getStorageValue("demo", false) as Boolean;
             $.logInfo(["Demo mode:", $.gDemo]);
             if ($.gDemo) {
                 Storage.setValue("demo", false);
             }
 
+            $.gCadenceCounter =
+                $.getStorageValue("cadence_counter", $.gCadenceCounter) as
+                Number;
+            $.gGapColumnsHorizontal =
+                $.getStorageValue("gap_columns_horizontal", $.gGapColumnsHorizontal) as
+                Number;
+            $.gGapColumnsVertical =
+                $.getStorageValue("gap_columns_vertical", $.gGapColumnsVertical) as
+                Number;    
+
             $.gTargetDistance =
                 $.getStorageValue("target_distance", $.gTargetDistance) as
                 Number;
             $.gTargetCalories =
                 $.getStorageValue("target_calories", $.gTargetCalories) as
-                Number;           
+                Number;
+            $.gTargetPower =
+                $.getStorageValue("target_power", $.gTargetPower) as Number;
+            if ($.gTargetPower == 0) {
+                $.gTargetPower = $.getUserFtp();
+            }
+
             $.gTargetAveragePower =
                 $.getStorageValue(
                     "target_average_power",
@@ -112,16 +129,15 @@ class GoalsApp extends Application.AppBase {
                     "target_average_speed",
                     $.gTargetAverageSpeed
                 ) as Number;
+            $.gTargetSpeed =
+                $.getStorageValue("target_speed", $.gTargetSpeed) as Number;
             $.gTargetAverageCadence =
                 $.getStorageValue(
                     "target_average_cadence",
                     $.gTargetAverageCadence
                 ) as Number;
             $.gTargetCadence =
-                $.getStorageValue(
-                    "target_cadence",
-                    $.gTargetCadence
-                ) as Number;
+                $.getStorageValue("target_cadence", $.gTargetCadence) as Number;
             $.gTargetNormalizedPower =
                 $.getStorageValue(
                     "target_normalized_power",
@@ -143,19 +159,18 @@ class GoalsApp extends Application.AppBase {
                     $.gTargetMinutesElapsed
                 ) as Number;
             $.gTargetHeartRateZone =
-                $.getStorageValue(
-                    "target_heart_rate_zone",
-                    2
-                ) as Number;
-            $.gHeartRate.initHrZones();            
+                $.getStorageValue("target_heart_rate_zone", 2) as Number;
+            $.gHeartRate.initHrZones();
 
             $.gTargetIntensityFactor =
                 $.getStorageValue(
-                    "target_intensity_factor", $.gTargetIntensityFactor
+                    "target_intensity_factor",
+                    $.gTargetIntensityFactor
                 ) as Float;
             $.gTargetTrainingStressScore =
                 $.getStorageValue(
-                    "target_training_stress_score", $.gTargetTrainingStressScore                    
+                    "target_training_stress_score",
+                    $.gTargetTrainingStressScore
                 ) as Number;
 
             $.logInfo(["User settings loaded"]);
@@ -177,6 +192,10 @@ var gDemo as Boolean = false;
 var gShowLabels as Boolean = true;
 var gShowValues as Boolean = false;
 
+var gCadenceCounter as Number = 3; 
+var gGapColumnsHorizontal as Number = 8;
+var gGapColumnsVertical as Number = 8;
+
 var gTargetDistance as Number = 150;
 var gTargetCalories as Number = 2000;
 var gTargetAveragePower as Number = 200;
@@ -190,5 +209,8 @@ var gTargetTotalDescent as Number = 300;
 var gTargetMinutesElapsed as Number = 300;
 
 var gTargetHeartRateZone as Number = 2;
-var gTargetIntensityFactor as Float = 0.80;
+var gTargetIntensityFactor as Float = 0.8;
 var gTargetTrainingStressScore as Number = 100;
+
+var gTargetSpeed as Number = 28; // km/h
+var gTargetPower as Number = 0; // watts, default from user profile ftp if available, otherwise 250 watts

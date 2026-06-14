@@ -23,9 +23,9 @@ class GoalsView extends WatchUi.DataField {
     hidden var mPaused as Boolean = true;
     hidden var mPauseExtendedCounter as Number = 10;
     hidden var mShowDetails as Boolean = false;
-    
+
     hidden var mHasCadence as Boolean = false;
-    hidden var mCadenceZeroCounter as Number = 5;
+    hidden var mCadenceZeroCounter as Number = $.gCadenceCounter;
 
     hidden var mProgressFields as Array<FieldType> = new Array<
         FieldType
@@ -42,7 +42,7 @@ class GoalsView extends WatchUi.DataField {
 
     hidden var mProgress as Progress = new Progress();
     hidden var mNormPowerEngine as NormPowerEngine = new NormPowerEngine();
-    hidden var mHasCourseNavigation as Boolean = false;                
+    hidden var mHasCourseNavigation as Boolean = false;
 
     function initialize() {
         DataField.initialize();
@@ -66,6 +66,7 @@ class GoalsView extends WatchUi.DataField {
         // Add to maximum size to match mProgressArray size
         $.ensureArraySize(mProgressFields, $.gMaxProgressColumns, 0);
         $.logInfo(["onLayout: mProgressFields:", mProgressFields]);
+        $.logInfo(["onLayout: mProgressFieldValues:", mProgressFieldValues]);
     }
 
     // The given info object contains all the current workout information.
@@ -110,19 +111,19 @@ class GoalsView extends WatchUi.DataField {
                         info,
                         fieldType
                     );
-                    
+
                     //if ($.gShowValues) {
-                    // mProgressFieldValues[i] = mProgress.getValueForField(
-                    //     info,
-                    //     fieldType
-                    // );
+                    mProgressFieldValues[i] = mProgress.getValueForField(
+                        info,
+                        fieldType
+                    );
                     //}
                 }
-                // $.logInfo(["progressArray:", mProgressArray]);
 
-                var cadence = $.getActivityValue(info, :currentCadence, 0) as Number;
+                var cadence =
+                    $.getActivityValue(info, :currentCadence, 0) as Number;
                 if (!mHasCadence) {
-                    mHasCadence =cadence > 0;                        
+                    mHasCadence = cadence > 0;
                 } else {
                     // If cadence is zero for x consecutive updates, then show details.do {
                     if (cadence == 0) {
@@ -131,9 +132,9 @@ class GoalsView extends WatchUi.DataField {
                             mShowDetails = true;
                         }
                     } else {
-                        mCadenceZeroCounter = 5; // reset counter
+                        mCadenceZeroCounter = $.gCadenceCounter; // reset counter
                         mShowDetails = false;
-                    }                    
+                    }
                 }
             }
         }
@@ -224,6 +225,7 @@ class GoalsView extends WatchUi.DataField {
         switch (mFieldLayout) {
             case FLVertical:
                 // Calculate dynamic width for vertical pillars side-by-side
+                gap = $.gGapColumnsVertical; // Use user-defined gap for vertical layout
                 var availableWidth = screenW - margin * 2;
                 var totalGapWidth = (numBars - 1) * gap;
                 var barWidthVertical = (
@@ -252,6 +254,7 @@ class GoalsView extends WatchUi.DataField {
                 break;
             default:
             case FLHorizontal:
+                gap = $.gGapColumnsHorizontal; // Use user-defined gap for horizontal layout
                 // Calculate dynamic height for horizontal rows stacked vertically
                 var availableHeight = screenH - margin * 2;
                 var totalGapHeight = (numBars - 1) * gap;
@@ -395,8 +398,12 @@ class GoalsView extends WatchUi.DataField {
             if (label.length() <= fitCount) {
                 var currentUnderlyingColor = trackColor; // Default track background
                 // Check if the text is submerged in the filled part of the bar
-                
-                if (fillHeight > 0 && ty + dc.getFontHeight(Graphics.FONT_XTINY) / 2 >= y + h - fillHeight) {                    
+
+                if (
+                    fillHeight > 0 &&
+                    ty + dc.getFontHeight(Graphics.FONT_XTINY) / 2 >=
+                        y + h - fillHeight
+                ) {
                     currentUnderlyingColor = barColor; // It's submerged in the progress bar fill!
                 }
                 // Automatically choose the best contrasting text color
@@ -541,6 +548,7 @@ class GoalsView extends WatchUi.DataField {
                 cy - checkSize
             );
         }
+
         if ($.gShowLabels || mShowDetails) {
             var textLabel = getFieldLabelWide(fieldType);
             var font = Graphics.FONT_XTINY;
@@ -593,6 +601,72 @@ class GoalsView extends WatchUi.DataField {
                 currentX += charWidth;
             }
         }
+
+        // TODO fix color contrast for the value text when it is over the filled part of the bar
+        if (progress < 1.0 && $.gShowValues && mShowDetails) {
+            // Show actual values for the fieldType if requested using the same color as last character for the label text
+            var idxField = mProgressFields.indexOf(fieldType);
+            if (idxField >= 0 && idxField < mProgressFieldValues.size()) {
+                var font = Graphics.FONT_XTINY;
+                var fontHeight = dc.getFontHeight(font);
+                var textY = y + (h - fontHeight) / 2;
+                var textX = x + w - 6; // Right-align with a 6px margin from the right edge
+                dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+                dc.drawText(
+                    textX,
+                    textY,
+                    font,
+                    getFormattedValue(
+                        mProgressFieldValues[idxField],
+                        fieldType
+                    ),
+                    Graphics.TEXT_JUSTIFY_RIGHT
+                );
+            }
+        }
+    }
+    hidden function getFormattedValue(
+        value as Float or Number or Null,
+        fieldType as FieldType
+    ) as String {
+        if (value == null) {
+            value = 0.0f;
+        }
+
+        switch (fieldType) {
+            case FTDistance:
+            case FTDistanceToDestination:
+            case FTDistanceToNext:
+            case FTDistanceOrNavDestination:
+                return (value / 1000.0f).format("%.1f") + " km"; // Convert meters to kilometers
+            case FTCalories:
+                return value.format("%.0f") + " kcal"; // Calories are already in kcal
+            case FTAverageHeartRateZone:
+            case FTHeartRateZone:
+                return value.format("%.0f"); // Number
+            case FTPower:
+            case FTAveragePower:
+            case FTNormalizedPower:
+                return value.format("%.0f") + " W"; // Power is already in watts
+            case FTSpeed:
+            case FTAverageSpeed:
+                return (value * 3.6f).format("%.1f") + " km/h"; // Convert m/s to km/h
+            case FTAverageCadence:
+            case FTCadence:
+                return value.format("%.0f") + " rpm"; // Cadence is already in rpm
+            case FTTotalAscent:
+            case FTTotalDescent:
+                return value.format("%.0f") + " m"; // Ascent/Descent is already in meters
+            case FTMinutesElapsed:
+                // TODO convert to HH:MM:SS
+                return (value / 60.0f).format("%.1f") + " min"; // Convert seconds to minutes
+            case FTIntensityFactor:
+                return value.format("%.2f"); // Intensity Factor is unitless
+            case FTTrainingStressScore:
+                return value.format("%.0f"); // TSS is unitless
+            default:
+                return value.format("%.2f"); // Default: no conversion
+        }
     }
 
     hidden var SIN_TABLE as Array<Float> = new Array<Float>[360];
@@ -642,12 +716,16 @@ class GoalsView extends WatchUi.DataField {
                 }
                 return "RZ" + $.gTargetHeartRateZone.format("%d");
             case FTAverageHeartRateZone:
-            if ($.gHeartRate.getIsInWarmUp()) {
+                if ($.gHeartRate.getIsInWarmUp()) {
                     return "øZ0";
                 }
                 return "øZ" + $.gTargetHeartRateZone.format("%d");
+            case FTPower:
+                return "PWR";
             case FTAveragePower:
                 return "øPW";
+            case FTSpeed:
+                return "SPD";
             case FTAverageSpeed:
                 return "øSP";
             case FTAverageCadence:
@@ -676,7 +754,7 @@ class GoalsView extends WatchUi.DataField {
             case FTIntensityFactor:
                 return "IF";
             case FTTrainingStressScore:
-                return "TSS";                
+                return "TSS";
             default:
                 return "";
         }
@@ -690,8 +768,12 @@ class GoalsView extends WatchUi.DataField {
                 return "CALORIES";
             case FTAverageHeartRateZone:
                 return "AVG HEART RATE ZONE";
+            case FTPower:
+                return "POWER";
             case FTAveragePower:
                 return "AVG POWER";
+            case FTSpeed:
+                return "SPEED";
             case FTAverageSpeed:
                 return "AVG SPEED";
             case FTAverageCadence:
@@ -716,7 +798,11 @@ class GoalsView extends WatchUi.DataField {
             case FTDistanceToNext:
                 return "DISTANCE TO NEXT";
             case FTDistanceOrNavDestination:
-                return "DISTANCE OR DESTINATION";
+                if (mHasCourseNavigation) {
+                    return "DISTANCE TO DEST";
+                } else {
+                    return "DISTANCE";
+                }
             case FTIntensityFactor:
                 return "INTENSITY FACTOR";
             case FTTrainingStressScore:
@@ -726,14 +812,20 @@ class GoalsView extends WatchUi.DataField {
         }
     }
 
+    // --- Premium Edge 1050 Bright Grays ---
+    const COLOR_ALABASTER = 0xf2f2f2; // 95% Brightness - Incredibly clean, barely-there gray
+    const COLOR_PLATINUM = 0xe5e5e5; // 90% Brightness - Premium tech track look (Highly Recommended)
+    const COLOR_GAINSBORO = 0xdcdcdc; // 86% Brightness - Safe, solid background track
+    const COLOR_SILVER_LIGHT = 0xd3d3d3; // 83% Brightness - Noticeably lighter than standard Garmin Lt Gray
+
     function getThemeColor(darkBackground) as Dictionary {
         return {
             :border => darkBackground
-                ? Graphics.COLOR_LT_GRAY
+                ? COLOR_SILVER_LIGHT
                 : Graphics.COLOR_DK_GRAY,
             :track => darkBackground
                 ? Graphics.COLOR_DK_GRAY
-                : Graphics.COLOR_LT_GRAY,
+                : COLOR_PLATINUM,
         };
     }
 }

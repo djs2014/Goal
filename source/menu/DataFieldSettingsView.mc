@@ -57,6 +57,9 @@ class DataFieldSettingsDelegate extends WatchUi.BehaviorDelegate {
 
     mi = new WatchUi.MenuItem("Show fields", null, "show_fields", null);    
     menu.addItem(mi);
+
+    mi = new WatchUi.MenuItem("Advanced", null, "advanced", null);    
+    menu.addItem(mi);
     
     var boolean = false;
 
@@ -91,19 +94,3 @@ function getStorageFloatAsString(key as String) as String {
   return (getStorageValue(key, 0.0f) as Float).format("%.1f");
 }
 
-
-function getSoundModeText(value as Number) as String {
-  switch (value) {
-    case 0:
-      return "Quiet";
-    case 1:
-      return "Beep";
-    case 2:
-      return "Canary";
-    case 3:
-      return "Beep Beep";
-
-    default:
-      return "--";
-  }
-}

@@ -6,25 +6,7 @@ import Toybox.UserProfile;
 
 class Progress {
     function initialize() {
-        var thresholdPower = UserProfile.getFunctionalThresholdPower(
-            Activity.SPORT_CYCLING
-        );
-        if (thresholdPower != null) {
-            mUserFTP = thresholdPower as Number;
-        } else {
-            mUserFTP = 0;
-        }
-    }
-
-    function getValueForField(
-        info as Activity.Info,
-        fieldType as FieldType
-    ) as Float {
-        // TODO split getProgressForField
-        // part get actual value
-        // part get target value
-        // then return both and calculate progress in GoalsView
-        // should be optimized for memory usage and performance, so that we don't calculate values we don't need for the visible fields
+        mUserFTP = $.getUserFtp();
     }
 
     function getProgressForField(
@@ -58,9 +40,20 @@ class Progress {
                     ($.getActivityValue(info, :calories, 0) as Number) /
                     targetValue.toFloat()
                 );
+            case FTPower:
+                return (
+                    ($.getActivityValue(info, :currentPower, 0) as Number) /
+                    targetValue.toFloat()
+                );
             case FTAveragePower:
                 return (
                     ($.getActivityValue(info, :averagePower, 0) as Number) /
+                    targetValue.toFloat()
+                );
+            case FTSpeed:
+                return (
+                    (($.getActivityValue(info, :currentSpeed, 0) as Float) *
+                        3.6) /
                     targetValue.toFloat()
                 );
             case FTAverageSpeed:
@@ -154,23 +147,19 @@ class Progress {
         switch (fieldType) {
             case FTDistance:
                 // Target is in kilometers, but Connect IQ distance is in meters
-                targetValue = getTargetValueForField(fieldType) * 1000.0f; // convert to meters
+                targetValue = $.gTargetDistance * 1000.0f; // convert to meters
                 break;
             case FTDistanceToDestination:
-                targetValue =
-                    $.getActivityValue(info, :distanceToDestination, 0.0f) as
-                    Float; // in meters
-                break;
+                return calculateDistanceToDestinationProgress(info);
             case FTDistanceToNext:
-                 return calculateDistanceToNextProgress(info);
-                 break;
+                return calculateDistanceToNextProgress(info);
             case FTDistanceOrNavDestination:
-                targetValue =
-                    $.getActivityValue(info, :distanceToDestination, 0.0f) as
-                    Float;
-                if (targetValue == 0) {
-                    targetValue = getTargetValueForField(FTDistance) * 1000.0f; // convert to meters
+                var progressToDestination =
+                    calculateDistanceToDestinationProgress(info);
+                if (progressToDestination > 0) {
+                    return progressToDestination;
                 }
+                targetValue = $.gTargetDistance * 1000.0f; // convert to meters
                 break;
         }
 
@@ -191,8 +180,12 @@ class Progress {
                 return $.gTargetDistance;
             case FTCalories:
                 return $.gTargetCalories;
+            case FTPower:
+                return $.gTargetPower;
             case FTAveragePower:
                 return $.gTargetAveragePower;
+            case FTSpeed:
+                return $.gTargetSpeed;
             case FTAverageSpeed:
                 return $.gTargetAverageSpeed;
             case FTAverageCadence:
@@ -234,13 +227,6 @@ class Progress {
         if (mUserFTP == 0) {
             return 0.0f;
         }
-        // $.logInfo([
-        //     "getIntensityFactor: mNormalizedPower=",
-        //     mNormalizedPower,
-        //     " mUserFTP=",
-        //     mUserFTP,
-        //     mNormalizedPower / mUserFTP.toFloat()
-        // ]);
         return mNormalizedPower / mUserFTP.toFloat();
     }
 
@@ -262,30 +248,31 @@ class Progress {
         );
     }
 
-    private var mMaxDistanceToNext = 0.0f;
-    private var mLastWaypointTime = 0;
-
-    function calculateDistanceToNextProgress(info as Activity.Info?) as Float {
-        var currentDist = $.getActivityValue(info, :distanceToNextPoint, 0.0f) as
-            Float;
-
-        if (currentDist == 0.0f) {
-            mMaxDistanceToNext = 0.0f; // Reset if data is lost
+    private var mMaxDistanceToDestination = 0.0f;
+    function calculateDistanceToDestinationProgress(
+        info as Activity.Info
+    ) as Float {
+        var currentDistance =
+            $.getActivityValue(info, :distanceToDestination, 0.0f) as Float;
+        if (currentDistance == null || currentDistance == 0.0f) {
+            mMaxDistanceToDestination = 0.0f; // Reset if data is lost
             return 0.0f;
         }
-        
+
         // 1. Detect if we just passed a waypoint or if distance suddenly jumped up
-        if (currentDist > mMaxDistanceToNext) {
-            mMaxDistanceToNext = currentDist; // This is our new 100% starting line
+        if (currentDistance > mMaxDistanceToDestination) {
+            mMaxDistanceToDestination = currentDistance; // This is our new 100% starting line
         }
 
         // 2. Prevent division by zero
-        if (mMaxDistanceToNext <= 0.0f) {
+        if (mMaxDistanceToDestination <= 0.0f) {
             return 0.0f;
         }
 
-        // 3. Inverse Progress Formula: As currentDist shrinks, progress grows!
-        var progress = (mMaxDistanceToNext - currentDist) / mMaxDistanceToNext;
+        // 3. Inverse Progress Formula: As currentDistance shrinks, progress grows!
+        var progress =
+            (mMaxDistanceToDestination - currentDistance) /
+            mMaxDistanceToDestination;
 
         // Safety clamp between 0.0 and 1.0
         if (progress < 0.0f) {
@@ -296,5 +283,130 @@ class Progress {
         }
 
         return progress;
+    }
+    private var mMaxDistanceToNext = 0.0f;
+    function calculateDistanceToNextProgress(info as Activity.Info) as Float {
+        var currentDistance =
+            $.getActivityValue(info, :distanceToNextPoint, 0.0f) as Float;
+        if (currentDistance == null || currentDistance == 0.0f) {
+            mMaxDistanceToNext = 0.0f; // Reset if data is lost
+            return 0.0f;
+        }
+
+        // 1. Detect if we just passed a waypoint or if distance suddenly jumped up
+        if (currentDistance > mMaxDistanceToNext) {
+            mMaxDistanceToNext = currentDistance; // This is our new 100% starting line
+        }
+
+        // 2. Prevent division by zero
+        if (mMaxDistanceToNext <= 0.0f) {
+            return 0.0f;
+        }
+
+        // 3. Inverse Progress Formula: As currentDistance shrinks, progress grows!
+        var progress =
+            (mMaxDistanceToNext - currentDistance) / mMaxDistanceToNext;
+
+        // Safety clamp between 0.0 and 1.0
+        if (progress < 0.0f) {
+            progress = 0.0f;
+        }
+        if (progress > 1.0f) {
+            progress = 1.0f;
+        }
+
+        return progress;
+    }
+
+    function getValueForField(
+        info as Activity.Info,
+        fieldType as FieldType
+    ) as Float or Number {
+        switch (fieldType) {
+            case FTDistance:
+                return (
+                    (
+                        $.getActivityValue(info, :elapsedDistance, 0.0f) as
+                            Float
+                    ) / 1000.0f
+                ); // convert to km
+            case FTDistanceToDestination:
+                return (
+                    (
+                        $.getActivityValue(
+                            info,
+                            :distanceToDestination,
+                            0.0f
+                        ) as Float
+                    ) / 1000.0f
+                ); // convert to km
+            case FTDistanceToNext:
+                return (
+                    (
+                        $.getActivityValue(info, :distanceToNextPoint, 0.0f) as
+                            Float
+                    ) / 1000.0f
+                ); // convert to km
+            case FTDistanceOrNavDestination:
+                var distToDest =
+                    (
+                        $.getActivityValue(
+                            info,
+                            :distanceToDestination,
+                            0.0f
+                        ) as Float
+                    ) / 1000.0f; // convert to km
+                if (distToDest > 0.0f) {
+                    return distToDest;
+                } else {
+                    return (
+                        (
+                            $.getActivityValue(info, :elapsedDistance, 0.0f) as
+                                Float
+                        ) / 1000.0f
+                    ); // convert to km
+                }
+            case FTCalories:
+                return $.getActivityValue(info, :calories, 0) as Number;
+            case FTAverageHeartRateZone:
+                return $.gHeartRate.getHeartRateZone(
+                    $.getActivityValue(info, :averageHeartRate, 0) as Number
+                );
+            case FTHeartRateZone:
+                return $.gHeartRate.getHeartRateZone(
+                    $.getActivityValue(info, :currentHeartRate, 0) as Number
+                );
+            case FTPower:
+                return $.getActivityValue(info, :currentPower, 0) as Number;
+            case FTAveragePower:
+                return $.getActivityValue(info, :averagePower, 0) as Number;
+            case FTSpeed:
+                return $.getActivityValue(info, :currentSpeed, 0) as Float;
+            case FTAverageSpeed:
+                return $.getActivityValue(info, :averageSpeed, 0) as Float;
+            case FTAverageCadence:
+                return $.getActivityValue(info, :averageCadence, 0) as Number;
+            case FTCadence:
+                return $.getActivityValue(info, :currentCadence, 0) as Number;
+            case FTNormalizedPower:
+                return mNormalizedPower;
+            case FTTotalAscent:
+                return $.getActivityValue(info, :totalAscent, 0) as Number;
+            case FTTotalDescent:
+                return $.getActivityValue(info, :totalDescent, 0) as Number;
+            case FTMinutesElapsed:
+                return (
+                    ($.getActivityValue(info, :elapsedTime, 0) as Number) /
+                    60000.0
+                ); // convert milliseconds to minutes
+            case FTIntensityFactor:
+                return getIntensityFactor();
+            case FTTrainingStressScore:
+                return getTrainingStressScore(
+                    $.getActivityValue(info, :elapsedTime, 0) as Number
+                );
+            default:
+                return 0.0f;
+        }
     }
 }

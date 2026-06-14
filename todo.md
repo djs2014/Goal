@@ -1,7 +1,12 @@
 api level min API Level 5.2.2
 
+bug dist to dest / next ->
+show values -> detect color on background
+
 To Fix
 Groen is ook donker -> hsp werkt niet?
+
+layout: bricks ?
 
 arc layout
 Divider perc 80%
@@ -11,9 +16,6 @@ autoupdate targets -> use reached values of last as goal
 
 The Mathematical Average Symbol ( ∅ or ∅ )
 the Overline / Macron Accent ( Ā )
-Current: CAD → Average: aCD
-Current: PWR → Average: aPW
-Current: SPD → Average: aSP
 
 Color Scheme
 0% to 50%: Blue → Green

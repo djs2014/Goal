@@ -7,24 +7,31 @@ enum FieldLayout {
     FLHorizontal = 1
 }
 
-var FieldTypeCount = 18; // incl the 0
+var FieldTypeCount = 20; // incl the 0
 enum FieldType {
     FTUnknown = 0,
+    // Duration related fields
     FTDistance = 1,
-    FTCalories = 2,
-    FTAverageHeartRateZone = 3,
-    FTAveragePower = 4,
-    FTAverageSpeed = 5,
-    FTAverageCadence = 6,
-    FTNormalizedPower = 7,   
-    FTTotalAscent = 8,
-    FTTotalDescent = 9,
-    FTMinutesElapsed = 10, 
-    FTHeartRateZone = 11,  
-    FTDistanceToDestination = 12,  
-    FTDistanceToNext = 13,  
-    FTDistanceOrNavDestination = 14, 
-    FTTrainingStressScore = 15,
-    FTIntensityFactor = 16,
-    FTCadence = 17,    
+    FTDistanceToDestination = 2,  
+    FTDistanceToNext = 3,  
+    FTDistanceOrNavDestination = 4, 
+    FTMinutesElapsed = 5, 
+    FTCalories = 6,
+    FTTrainingStressScore = 7,
+    // Average related fields
+    FTAverageSpeed = 8,
+    FTAverageCadence = 9,
+    FTAveragePower = 10,
+    FTAverageHeartRateZone = 11,
+    FTNormalizedPower = 12,   
+    FTIntensityFactor = 13,
+    // Current related fields
+    FTSpeed = 14,  
+    FTCadence = 15,  
+    FTHeartRateZone = 16,  
+    FTPower = 17, 
+    // Other
+    FTTotalAscent = 18,
+    FTTotalDescent = 19,
+
 }
