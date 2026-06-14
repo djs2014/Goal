@@ -35,7 +35,7 @@ class Progress {
             // Distance related fields
             case FTDistance:
             case FTDistanceToDestination:
-            //case FTDistanceToNext:
+            case FTDistanceToNext:
             case FTDistanceOrNavDestination:
                 return getProgressForDistance(info, fieldType);
             // heart rate related fields
@@ -102,8 +102,11 @@ class Progress {
             case FTIntensityFactor:
                 return getIntensityFactor() / targetValue.toFloat();
             case FTTrainingStressScore:
-                return getTrainingStressScore($.getActivityValue(info, :elapsedTime, 0) as Number) /
-                    targetValue.toFloat();
+                return (
+                    getTrainingStressScore(
+                        $.getActivityValue(info, :elapsedTime, 0) as Number
+                    ) / targetValue.toFloat()
+                );
             default:
                 $.logInfo([
                     "getProgressForField Unknown field type:",
@@ -158,12 +161,9 @@ class Progress {
                     $.getActivityValue(info, :distanceToDestination, 0.0f) as
                     Float; // in meters
                 break;
-            // case FTDistanceToNext:
-            //     // TODO
-            //     targetValue =
-            //         $.getActivityValue(info, :distanceToNextPoint, 0.0f) as
-            //         Float; // in meters
-            //     break;
+            case FTDistanceToNext:
+                 return calculateDistanceToNextProgress(info);
+                 break;
             case FTDistanceOrNavDestination:
                 targetValue =
                     $.getActivityValue(info, :distanceToDestination, 0.0f) as
@@ -255,10 +255,46 @@ class Progress {
         if (fraction == 0) {
             return 0.0f;
         }
-        
+
         return (
             ((seconds * mNormalizedPower * getIntensityFactor()) / fraction) *
             100.0f
         );
+    }
+
+    private var mMaxDistanceToNext = 0.0f;
+    private var mLastWaypointTime = 0;
+
+    function calculateDistanceToNextProgress(info as Activity.Info?) as Float {
+        var currentDist = $.getActivityValue(info, :distanceToNextPoint, 0.0f) as
+            Float;
+
+        if (currentDist == 0.0f) {
+            mMaxDistanceToNext = 0.0f; // Reset if data is lost
+            return 0.0f;
+        }
+        
+        // 1. Detect if we just passed a waypoint or if distance suddenly jumped up
+        if (currentDist > mMaxDistanceToNext) {
+            mMaxDistanceToNext = currentDist; // This is our new 100% starting line
+        }
+
+        // 2. Prevent division by zero
+        if (mMaxDistanceToNext <= 0.0f) {
+            return 0.0f;
+        }
+
+        // 3. Inverse Progress Formula: As currentDist shrinks, progress grows!
+        var progress = (mMaxDistanceToNext - currentDist) / mMaxDistanceToNext;
+
+        // Safety clamp between 0.0 and 1.0
+        if (progress < 0.0f) {
+            progress = 0.0f;
+        }
+        if (progress > 1.0f) {
+            progress = 1.0f;
+        }
+
+        return progress;
     }
 }

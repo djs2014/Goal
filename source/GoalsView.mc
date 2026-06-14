@@ -628,20 +628,30 @@ class GoalsView extends WatchUi.DataField {
         return [xP.toNumber(), yP.toNumber()] as Point2D;
     }
 
+    // ø == Average symbol.
+    // Keep is 3 characters.
     hidden function getFieldLabel(fieldType as FieldType) as String {
         switch (fieldType) {
             case FTDistance:
                 return "DST";
             case FTCalories:
                 return "CAL";
+            case FTHeartRateZone:
+                if ($.gHeartRate.getIsInWarmUp()) {
+                    return "RZ0";
+                }
+                return "RZ" + $.gTargetHeartRateZone.format("%d");
             case FTAverageHeartRateZone:
-                return "aHRZ";
+            if ($.gHeartRate.getIsInWarmUp()) {
+                    return "øZ0";
+                }
+                return "øZ" + $.gTargetHeartRateZone.format("%d");
             case FTAveragePower:
-                return "aPWR";
+                return "øPW";
             case FTAverageSpeed:
-                return "aSPD";
+                return "øSP";
             case FTAverageCadence:
-                return "aCAD";
+                return "øCD"; // Do not use "ØCD" -> wont fit in 3 characters on small screens
             case FTCadence:
                 return "CAD";
             case FTNormalizedPower:
@@ -652,15 +662,10 @@ class GoalsView extends WatchUi.DataField {
                 return "DSC";
             case FTMinutesElapsed:
                 return "TIM";
-            case FTHeartRateZone:
-                if ($.gHeartRate.getIsInWarmUp()) {
-                    return "HRZ ~";
-                }
-                return "HRZ " + $.gTargetHeartRateZone.format("%0d");
             case FTDistanceToDestination:
                 return "D2D";
-            // case FTDistanceToNext:
-            //     return "D2N";
+            case FTDistanceToNext:
+                return "D2N";
             case FTDistanceOrNavDestination:
                 // Check if the user is currently navigating a course
                 if (mHasCourseNavigation) {
@@ -708,8 +713,8 @@ class GoalsView extends WatchUi.DataField {
                 return "HEARTRATEZONE " + $.gTargetHeartRateZone.format("%0d");
             case FTDistanceToDestination:
                 return "DISTANCE TO DEST";
-            // case FTDistanceToNext:
-            //     return "DISTANCE TO NEXT";
+            case FTDistanceToNext:
+                return "DISTANCE TO NEXT";
             case FTDistanceOrNavDestination:
                 return "DISTANCE OR DESTINATION";
             case FTIntensityFactor:

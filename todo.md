@@ -9,6 +9,11 @@ Configuratie per edgefield
 Endurance/Current stuff
 autoupdate targets -> use reached values of last as goal
 
+The Mathematical Average Symbol ( ∅ or ∅ )
+the Overline / Macron Accent ( Ā )
+Current: CAD → Average: aCD
+Current: PWR → Average: aPW
+Current: SPD → Average: aSP
 
 Color Scheme
 0% to 50%: Blue → Green

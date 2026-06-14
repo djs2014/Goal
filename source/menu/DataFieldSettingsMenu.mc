@@ -518,8 +518,8 @@ function getFieldTypeAsString(fieldType as FieldType) as String {
       return "Heart rate zone";
     case FTDistanceToDestination:
       return "Dist to destination";
-    // case FTDistanceToNext:
-    //   return "Distance to next";
+    case FTDistanceToNext:
+      return "Distance to next";
     case FTDistanceOrNavDestination:
       return "Dist or Nav destination";
     case FTTrainingStressScore:
