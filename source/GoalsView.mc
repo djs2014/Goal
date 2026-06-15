@@ -384,6 +384,16 @@ class GoalsView extends WatchUi.DataField {
             dc.fillRoundedRectangle(x, y + h - fillHeight, w, fillHeight, 4);
         }
 
+        if (mFieldDivider>0) {
+            // Draw a horizontal divider line at the specified height from the bottom
+            var dividerY = y + h - (h * mFieldDivider/100).toNumber();
+            if (fillHeight != dividerY - y) {
+                // Only draw the divider if it is not exactly at the fill height
+                dc.setColor(colors[:divider], Graphics.COLOR_TRANSPARENT);
+                dc.drawLine(x, dividerY, x + w, dividerY);
+            }
+        }
+
         // draw a border around the bar for better visibility
         dc.setColor(colors[:border], Graphics.COLOR_TRANSPARENT);
         dc.drawRoundedRectangle(x, y, w, h, 4);
@@ -555,6 +565,16 @@ class GoalsView extends WatchUi.DataField {
             dc.fillRoundedRectangle(x, y, fillWidth, h, 4);
         }
 
+        if (mFieldDivider>0) {
+            // Draw a vertical divider line at the specified position from the left
+            var dividerX = x + (w * mFieldDivider/100).toNumber();
+            if (fillRightX != dividerX) {
+                // Only draw the divider if it is not exactly at the fill width
+                dc.setColor(colors[:divider], Graphics.COLOR_TRANSPARENT);
+                dc.drawLine(dividerX, y, dividerX, y + h);
+            }
+        }
+        
         // draw a border around the bar for better visibility
         dc.setColor(colors[:border], Graphics.COLOR_TRANSPARENT);
         dc.drawRoundedRectangle(x, y, w, h, 4);
@@ -920,6 +940,7 @@ class GoalsView extends WatchUi.DataField {
                 ? COLOR_SILVER_LIGHT
                 : Graphics.COLOR_DK_GRAY,
             :track => darkBackground ? Graphics.COLOR_DK_GRAY : COLOR_PLATINUM,
+            :divider => darkBackground ? Graphics.COLOR_BLACK : Graphics.COLOR_WHITE,
         };
     }
 }
