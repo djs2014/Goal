@@ -632,30 +632,94 @@ class GoalsView extends WatchUi.DataField {
                 // Advance the X cursor forward by the letter's width for the next character
                 currentX += charWidth;
             }
-        }
 
-        // TODO fix color contrast for the value text when it is over the filled part of the bar
+        // Only show values if the progress is less than 100% and the user has requested to show values
         if (progress < 1.0 && mFieldShowValues && mShowDetails) {
-            // Show actual values for the fieldType if requested using the same color as last character for the label text
             var idxField = mProgressFields.indexOf(fieldType);
             if (idxField >= 0 && idxField < mProgressFieldValues.size()) {
-                var font = Graphics.FONT_XTINY;
-                var fontHeight = dc.getFontHeight(font);
-                var textY = y + (h - fontHeight) / 2;
-                var textX = x + w - 6; // Right-align with a 6px margin from the right edge
-                dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-                dc.drawText(
-                    textX,
-                    textY,
-                    font,
-                    getFormattedValue(
-                        mProgressFieldValues[idxField],
-                        fieldType
-                    ),
-                    Graphics.TEXT_JUSTIFY_RIGHT
+                var textValue = getFormattedValue(
+                    mProgressFieldValues[idxField],
+                    fieldType
                 );
+                // Position text: Centered vertically inside the bar height, with a 6px right margin
+                var fontValue = Graphics.FONT_XTINY;
+                var fontValueHeight = dc.getFontHeight(fontValue);
+                var textValueY = y + (h - fontValueHeight) / 2;
+                var startValueX = x + w - 6; // Right-align with a 6px margin from the right edge
+
+                // Draw the value text character-by-character from right to left
+                for (var i = textValue.length()-1; i >= 0; i--) {
+                    var charStr = textValue.substring(i, i + 1);
+                    var charWidth = dc.getTextWidthInPixels(charStr, fontValue);
+
+                    // Determine the horizontal midpoint of this specific letter
+                    var charMidX = startValueX - charWidth / 2;
+
+                    // Contrast Check: Is this letter's midpoint inside the filled color block?
+                    var underlyingColor = trackColor;
+                    if (fillWidth > 0 && charMidX <= fillRightX) {
+                        underlyingColor = barColor; // Letter is sitting on top of the color fill
+                    }
+
+                    // Apply your HSP formula logic
+                    if (isColorLight(underlyingColor)) {
+                        dc.setColor(
+                            Graphics.COLOR_BLACK,
+                            Graphics.COLOR_TRANSPARENT
+                        );
+                    } else {
+                        dc.setColor(
+                            Graphics.COLOR_WHITE,
+                            Graphics.COLOR_TRANSPARENT
+                        );
+                    }
+
+                    // Draw the single character (use Left justification so they chain properly)
+                    dc.drawText(
+                        startValueX - charWidth,
+                        textValueY,
+                        fontValue,
+                        charStr,
+                        Graphics.TEXT_JUSTIFY_LEFT
+                    );
+
+                    // Move the starting X position leftward for the next character
+                    startValueX -= charWidth;
+                }
             }
         }
+        } // mFieldShowLabels || mShowDetails)
+
+        // TODO fix color contrast for the value text when it is over the filled part of the bar
+        // if (progress < 1.0 && mFieldShowValues && mShowDetails) {
+        //     // Show actual values for the fieldType if requested using the same color as last character for the label text
+        //     var idxField = mProgressFields.indexOf(fieldType);
+        //     if (idxField >= 0 && idxField < mProgressFieldValues.size()) {
+        //         var textValue = getFormattedValue(
+        //             mProgressFieldValues[idxField],
+        //             fieldType
+        //         );
+
+        //         var font = Graphics.FONT_XTINY;
+        //         var fontHeight = dc.getFontHeight(font);
+        //         var textY = y + (h - fontHeight) / 2;
+        //         var textX = x + w - 6; // Right-align with a 6px margin from the right edge
+        //         // TODO: get background color at this position to determine contrast for the value text
+
+
+        //         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+        //         dc.drawText(
+        //             textX,
+        //             textY,
+        //             font,
+        //             getFormattedValue(
+        //                 mProgressFieldValues[idxField],
+        //                 fieldType
+        //             ),
+        //             Graphics.TEXT_JUSTIFY_RIGHT
+        //         );
+        //     }
+        // }
     }
     hidden function getFormattedValue(
         value as Float or Number or Null,
@@ -670,9 +734,9 @@ class GoalsView extends WatchUi.DataField {
             case FTDistanceToDestination:
             case FTDistanceToNext:
             case FTDistanceOrNavDestination:
-                return (value / 1000.0f).format("%.1f") + " km"; // Convert meters to kilometers
+                return (value / 1000.0f).format("%.1f") + " KM"; // Convert meters to kilometers
             case FTCalories:
-                return value.format("%.0f") + " kcal"; // Calories are already in kcal
+                return value.format("%.0f") + " KCAL"; // Calories are already in kcal
             case FTAverageHeartRateZone:
             case FTHeartRateZone:
                 return value.format("%.0f"); // Number
@@ -682,16 +746,16 @@ class GoalsView extends WatchUi.DataField {
                 return value.format("%.0f") + " W"; // Power is already in watts
             case FTSpeed:
             case FTAverageSpeed:
-                return (value * 3.6f).format("%.1f") + " km/h"; // Convert m/s to km/h
+                return (value * 3.6f).format("%.1f") + " KM/H"; // Convert m/s to km/h
             case FTAverageCadence:
             case FTCadence:
-                return value.format("%.0f") + " rpm"; // Cadence is already in rpm
+                return value.format("%.0f") + " RPM"; // Cadence is already in rpm
             case FTTotalAscent:
             case FTTotalDescent:
-                return value.format("%.0f") + " m"; // Ascent/Descent is already in meters
+                return value.format("%.0f") + " M"; // Ascent/Descent is already in meters
             case FTMinutesElapsed:
                 // TODO convert to HH:MM:SS
-                return (value / 60.0f).format("%.1f") + " min"; // Convert seconds to minutes
+                return (value / 60.0f).format("%.1f") + " MIN"; // Convert seconds to minutes
             case FTIntensityFactor:
                 return value.format("%.2f"); // Intensity Factor is unitless
             case FTTrainingStressScore:
