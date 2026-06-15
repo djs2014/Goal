@@ -71,6 +71,8 @@ class GoalsApp extends Application.AppBase {
                         80, // divider at
                         FTDistanceOrNavDestination,
                         FTTrainingStressScore,
+                        FTCalories,
+                        FTMinutesElapsed,
                         FTSpeed,
                         FTPower,
                         FTCadence,
@@ -87,6 +89,8 @@ class GoalsApp extends Application.AppBase {
                         80, // divider at
                         FTDistanceOrNavDestination,
                         FTTrainingStressScore,
+                        FTCalories,
+                        FTMinutesElapsed,
                         FTSpeed,
                         FTPower,
                         FTCadence,
@@ -126,6 +130,12 @@ class GoalsApp extends Application.AppBase {
                 Storage.setValue("target_heart_rate_zone", 2); // zone
                 Storage.setValue("target_total_ascent", 500); // meters
                 Storage.setValue("target_total_descent", 500); // meters
+
+                Storage.setValue("alert_calories_window", 300); // calories
+                Storage.setValue("alert_calories_sound", false); // sound
+                Storage.setValue("alert_timeelapsed_window", 0); // minutes
+                Storage.setValue("alert_timeelapsed_sound", false); // sound
+                Storage.setValue("alert_displaytime_sec", 10); // seconds
             }
 
             // $.gDebug = $.getStorageValue("debug", $.gDebug) as Boolean;
@@ -237,6 +247,18 @@ class GoalsApp extends Application.AppBase {
                     $.gTargetTrainingStressScore
                 ) as Number;
 
+            // Alerts
+            $.gAlertCaloriesWindow =
+                $.getStorageValue("alert_calories_window", 300) as Number;
+            $.gAlertCaloriesSound =
+                $.getStorageValue("alert_calories_sound", false) as Boolean;
+            $.gAlertTimeElapsedWindow =
+                $.getStorageValue("alert_timeelapsed_window", 0) as Number;
+            $.gAlertTimeElapsedSound =
+                $.getStorageValue("alert_timeelapsed_sound", false) as Boolean;
+            $.gAlertDisplayTimeMillisec =
+                ($.getStorageValue("alert_displaytime_sec", 10) as Number) * 1000;
+
             $.logInfo(["User settings loaded"]);
         } catch (ex) {
             $.logInfo(ex.getErrorMessage());
@@ -280,4 +302,9 @@ var gTargetHeartRateZone as Number = 2;
 var gTargetTotalAscent as Number = 500;
 var gTargetTotalDescent as Number = 500;
 
-
+// Alerts
+var gAlertCaloriesWindow as Number = 300; // calories
+var gAlertCaloriesSound as Boolean = false;
+var gAlertTimeElapsedWindow as Number = 0; // minutes
+var gAlertTimeElapsedSound as Boolean = false;
+var gAlertDisplayTimeMillisec as Number = 10; // seconds

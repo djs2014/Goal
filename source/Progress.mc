@@ -3,6 +3,7 @@ import Toybox.Graphics;
 import Toybox.Lang;
 import Toybox.WatchUi;
 import Toybox.UserProfile;
+import Toybox.Attention;
 
 class Progress {
     function initialize() {
@@ -27,78 +28,177 @@ class Progress {
         }
 
         // Other fields
-        var targetValue = getTargetValueForField(fieldType);
-        if (targetValue == 0) {
-            return 0.0f;
-        }
+        // var targetValue = getTargetValueForField(fieldType);
+        // if (targetValue == 0) {
+        //     return 0.0f;
+        // }
 
         switch (fieldType) {
             case FTUnknown:
                 return 0.0f;
             case FTCalories:
-                return (
-                    ($.getActivityValue(info, :calories, 0) as Number) /
-                    targetValue.toFloat()
-                );
+                var calories = $.getActivityValue(info, :calories, 0) as Number;
+                if ($.gAlertCaloriesWindow > 20) {
+                    var calorieWindow = $.gAlertCaloriesWindow;
+                    var currentRemainder = calories % calorieWindow;
+                    // Trigger alert when you are close to the target (e.g. window is 300, between 280 and 299 calories)
+                    if (
+                        currentRemainder >= $.gAlertCaloriesWindow - 10 &&
+                        currentRemainder < calorieWindow
+                    ) {
+                        if (!mHasAlertedThisCaloriesWindow) {
+                            mAlertCaloriesActive = true;
+                            mAlertCaloriesStartTime = System.getTimer();
+                            if ($.gAlertCaloriesSound) {
+                                triggerNutritionAlert();
+                            }
+                            mHasAlertedThisCaloriesWindow = true; // Lock it so it doesn't buzz every second
+                        }
+                    }
+                    // Reset the lock once you officially cross into the next 300-calorie window
+                    else if (currentRemainder < 50) {
+                        mHasAlertedThisCaloriesWindow = false;
+                        mAlertCaloriesActive = false;
+                    }
+
+                    // Every x calories burned, the remainder resets the bar to 0%
+                    // giving you a visual countdown to your next energy gel/bar
+                    var caloriesRatio =
+                        (calories % $.gAlertCaloriesWindow) /
+                        $.gAlertCaloriesWindow.toFloat();
+                    return caloriesRatio;
+                }
+                if ($.gTargetCalories == 0) {
+                    return 0.0f;
+                }
+                return calories / $.gTargetCalories.toFloat();
             case FTPower:
+                if ($.gTargetPower == 0) {
+                    return 0.0f;
+                }
                 return (
                     ($.getActivityValue(info, :currentPower, 0) as Number) /
-                    targetValue.toFloat()
+                    $.gTargetPower.toFloat()
                 );
             case FTAveragePower:
+                if ($.gTargetAveragePower == 0) {
+                    return 0.0f;
+                }
                 return (
                     ($.getActivityValue(info, :averagePower, 0) as Number) /
-                    targetValue.toFloat()
+                    $.gTargetAveragePower.toFloat()
                 );
             case FTSpeed:
+                if ($.gTargetSpeed == 0) {
+                    return 0.0f;
+                }
                 return (
                     (($.getActivityValue(info, :currentSpeed, 0) as Float) *
                         3.6) /
-                    targetValue.toFloat()
+                    $.gTargetSpeed.toFloat()
                 );
             case FTAverageSpeed:
+                if ($.gTargetAverageSpeed == 0) {
+                    return 0.0f;
+                }
                 // convert meters/second to km/h by multiplying by 3.6
                 return (
                     (($.getActivityValue(info, :averageSpeed, 0) as Float) *
                         3.6) /
-                    targetValue.toFloat()
+                    $.gTargetAverageSpeed.toFloat()
                 );
             case FTAverageCadence:
+                if ($.gTargetAverageCadence == 0) {
+                    return 0.0f;
+                }
                 return (
                     ($.getActivityValue(info, :averageCadence, 0) as Number) /
-                    targetValue.toFloat()
+                    $.gTargetAverageCadence.toFloat()
                 );
             case FTCadence:
+                if ($.gTargetCadence == 0) {
+                    return 0.0f;
+                }
                 return (
                     ($.getActivityValue(info, :currentCadence, 0) as Number) /
-                    targetValue.toFloat()
+                    $.gTargetCadence.toFloat()
                 );
             case FTNormalizedPower:
-                return mNormalizedPower / targetValue.toFloat();
+                if ($.gTargetNormalizedPower == 0) {
+                    return 0.0f;
+                }
+                return mNormalizedPower / $.gTargetNormalizedPower.toFloat();
             case FTTotalAscent:
+                if ($.gTargetTotalAscent == 0) {
+                    return 0.0f;
+                }
                 return (
                     ($.getActivityValue(info, :totalAscent, 0) as Number) /
-                    targetValue.toFloat()
+                    $.gTargetTotalAscent.toFloat()
                 );
             case FTTotalDescent:
+                if ($.gTargetTotalDescent == 0) {
+                    return 0.0f;
+                }
                 return (
                     ($.getActivityValue(info, :totalDescent, 0) as Number) /
-                    targetValue.toFloat()
+                    $.gTargetTotalDescent.toFloat()
                 );
             case FTMinutesElapsed:
                 // convert milliseconds to minutes
-                return (
+                var elapsedTime =
                     ($.getActivityValue(info, :elapsedTime, 0) as Number) /
-                    60000.0 /
-                    targetValue.toFloat()
-                );
+                    60000.0;
+                if ($.gAlertTimeElapsedWindow > 0) {
+                    var timeWindow = $.gAlertTimeElapsedWindow;
+                    var currentRemainder = elapsedTime % timeWindow;
+
+                    // Trigger alert when you are close to the target (e.g., between 28 and 29 minutes)
+                    if (
+                        currentRemainder >= $.gAlertTimeElapsedWindow - 2 &&
+                        currentRemainder < timeWindow
+                    ) {
+                        if (!mHasAlertedThisTimeElapsedWindow) {
+                            mAlertTimeElapsedActive = true;
+                            mAlertTimeElapsedStartTime = System.getTimer();
+                            if ($.gAlertTimeElapsedSound) {
+                                triggerNutritionAlert();
+                            }
+                            mHasAlertedThisTimeElapsedWindow = true; // Lock it so it doesn't buzz every second
+                        }
+                    }
+                    // Reset the lock once you officially cross into the next 30-minute window
+                    else if (currentRemainder < 1) {
+                        mHasAlertedThisTimeElapsedWindow = false;
+                        mAlertTimeElapsedActive = false;
+                    }
+
+                    // Every x minutes elapsed, the remainder resets the bar to 0%
+                    // giving you a visual countdown to your next energy gel/bar
+                    var timeRatio =
+                        (elapsedTime % $.gAlertTimeElapsedWindow) /
+                        $.gAlertTimeElapsedWindow.toFloat();
+                    return timeRatio;
+                }
+                if ($.gTargetMinutesElapsed == 0) {
+                    return 0.0f;
+                }
+                return elapsedTime / $.gTargetMinutesElapsed.toFloat();
             case FTIntensityFactor:
-                return getIntensityFactor() / targetValue.toFloat();
+                if ($.gTargetIntensityFactor == 0) {
+                    return 0.0f;
+                }
+                return (
+                    getIntensityFactor() / $.gTargetIntensityFactor.toFloat()
+                );
             case FTTrainingStressScore:
+                if ($.gTargetTrainingStressScore == 0) {
+                    return 0.0f;
+                }
                 return (
                     getTrainingStressScore(
                         $.getActivityValue(info, :elapsedTime, 0) as Number
-                    ) / targetValue.toFloat()
+                    ) / $.gTargetTrainingStressScore.toFloat()
                 );
             default:
                 $.logInfo([
@@ -170,48 +270,48 @@ class Progress {
     }
 
     // Fixed target values for each field type, based on user settings
-    hidden function getTargetValueForField(
-        fieldType as FieldType
-    ) as Number or Float {
-        switch (fieldType) {
-            case FTUnknown:
-                return 0;
-            case FTDistance:
-                return $.gTargetDistance;
-            case FTCalories:
-                return $.gTargetCalories;
-            case FTPower:
-                return $.gTargetPower;
-            case FTAveragePower:
-                return $.gTargetAveragePower;
-            case FTSpeed:
-                return $.gTargetSpeed;
-            case FTAverageSpeed:
-                return $.gTargetAverageSpeed;
-            case FTAverageCadence:
-                return $.gTargetAverageCadence;
-            case FTCadence:
-                return $.gTargetCadence;
-            case FTNormalizedPower:
-                return $.gTargetNormalizedPower;
-            case FTTotalAscent:
-                return $.gTargetTotalAscent;
-            case FTTotalDescent:
-                return $.gTargetTotalDescent;
-            case FTMinutesElapsed:
-                return $.gTargetMinutesElapsed;
-            case FTIntensityFactor:
-                return $.gTargetIntensityFactor;
-            case FTTrainingStressScore:
-                return $.gTargetTrainingStressScore;
-            default:
-                $.logInfo([
-                    "getTargetValueForField Unknown field type:",
-                    fieldType,
-                ]);
-                return 0;
-        }
-    }
+    // hidden function getTargetValueForField(
+    //     fieldType as FieldType
+    // ) as Number or Float {
+    //     switch (fieldType) {
+    //         case FTUnknown:
+    //             return 0;
+    //         case FTDistance:
+    //             return $.gTargetDistance;
+    //         case FTCalories:
+    //             return $.gTargetCalories;
+    //         case FTPower:
+    //             return $.gTargetPower;
+    //         case FTAveragePower:
+    //             return $.gTargetAveragePower;
+    //         case FTSpeed:
+    //             return $.gTargetSpeed;
+    //         case FTAverageSpeed:
+    //             return $.gTargetAverageSpeed;
+    //         case FTAverageCadence:
+    //             return $.gTargetAverageCadence;
+    //         case FTCadence:
+    //             return $.gTargetCadence;
+    //         case FTNormalizedPower:
+    //             return $.gTargetNormalizedPower;
+    //         case FTTotalAscent:
+    //             return $.gTargetTotalAscent;
+    //         case FTTotalDescent:
+    //             return $.gTargetTotalDescent;
+    //         case FTMinutesElapsed:
+    //             return $.gTargetMinutesElapsed;
+    //         case FTIntensityFactor:
+    //             return $.gTargetIntensityFactor;
+    //         case FTTrainingStressScore:
+    //             return $.gTargetTrainingStressScore;
+    //         default:
+    //             $.logInfo([
+    //                 "getTargetValueForField Unknown field type:",
+    //                 fieldType,
+    //             ]);
+    //             return 0;
+    //     }
+    // }
 
     hidden var mNormalizedPower as Number = 0;
     function setNormalizedPower(np as Number) as Void {
@@ -325,46 +425,29 @@ class Progress {
         switch (fieldType) {
             case FTDistance:
                 return (
-                    (
-                        $.getActivityValue(info, :elapsedDistance, 0.0f) as
-                            Float
-                    ) / 1000.0f
-                ); // convert to km
+                    $.getActivityValue(info, :elapsedDistance, 0.0f) as Float
+                );
             case FTDistanceToDestination:
                 return (
-                    (
-                        $.getActivityValue(
-                            info,
-                            :distanceToDestination,
-                            0.0f
-                        ) as Float
-                    ) / 1000.0f
-                ); // convert to km
+                    $.getActivityValue(info, :distanceToDestination, 0.0f) as
+                    Float
+                );
             case FTDistanceToNext:
                 return (
-                    (
-                        $.getActivityValue(info, :distanceToNextPoint, 0.0f) as
-                            Float
-                    ) / 1000.0f
-                ); // convert to km
+                    $.getActivityValue(info, :distanceToNextPoint, 0.0f) as
+                    Float
+                );
             case FTDistanceOrNavDestination:
                 var distToDest =
-                    (
-                        $.getActivityValue(
-                            info,
-                            :distanceToDestination,
-                            0.0f
-                        ) as Float
-                    ) / 1000.0f; // convert to km
+                    $.getActivityValue(info, :distanceToDestination, 0.0f) as
+                    Float;
                 if (distToDest > 0.0f) {
                     return distToDest;
                 } else {
                     return (
-                        (
-                            $.getActivityValue(info, :elapsedDistance, 0.0f) as
-                                Float
-                        ) / 1000.0f
-                    ); // convert to km
+                        $.getActivityValue(info, :elapsedDistance, 0.0f) as
+                        Float
+                    );
                 }
             case FTCalories:
                 return $.getActivityValue(info, :calories, 0) as Number;
@@ -407,6 +490,56 @@ class Progress {
                 );
             default:
                 return 0.0f;
+        }
+    }
+
+    hidden function triggerNutritionAlert() {
+        if (!(Attention has :playTone && System.getDeviceSettings().tonesOn)) {
+            return;
+        }
+
+        Attention.playTone(Attention.TONE_LOUD_BEEP); // Soft initial warning
+        System.println("Nutrition Alert Fired! Eat up.");
+    }
+
+    private var mHasAlertedThisCaloriesWindow = false;
+    private var mAlertCaloriesActive as Boolean = false;
+    private var mAlertCaloriesStartTime as Number = System.getTimer();
+
+    private var mHasAlertedThisTimeElapsedWindow = false;
+    private var mAlertTimeElapsedActive as Boolean = false;
+    private var mAlertTimeElapsedStartTime as Number = System.getTimer();
+
+    function isAlertCaloriesActive() as Boolean {
+        if (
+            mAlertCaloriesActive &&
+            System.getTimer() - mAlertCaloriesStartTime <
+                $.gAlertDisplayTimeMillisec
+        ) {
+            return true;
+        }
+        return false;
+    }
+
+    function isAlertTimeElapsedActive() as Boolean {
+        if (
+            mAlertTimeElapsedActive &&
+            System.getTimer() - mAlertTimeElapsedStartTime <
+                $.gAlertDisplayTimeMillisec
+        ) {
+            return true;
+        }
+        return false;
+    }
+
+    function hasActiveAlert(fieldType as FieldType) as Boolean {
+        switch (fieldType) {
+            case FTCalories:
+                return isAlertCaloriesActive();
+            case FTMinutesElapsed:
+                return isAlertTimeElapsedActive();
+            default:
+                return false;
         }
     }
 }

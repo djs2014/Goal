@@ -76,8 +76,8 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       return;
     }
 
-    if (id instanceof String && id.equals("targets")) {
-      var targetMenu = new WatchUi.Menu2({ :title => "Targets / Goals" });
+    if (id instanceof String && id.equals("goals")) {
+      var targetMenu = new WatchUi.Menu2({ :title => "Goals" });
 
       var mi;
 
@@ -183,7 +183,7 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       targetMenu.addItem(mi);
 
       mi = new WatchUi.MenuItem(
-        "Minutes elapsed|0~(min)",
+        "Time elapsed|0~(min)",
         null,
         "target_minutes_elapsed",
         null
@@ -247,17 +247,22 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       return;
     }
 
-    if (id instanceof String && (id.equals("show_one_field") ||
+    if (
+      id instanceof String &&
+      (id.equals("show_one_field") ||
         id.equals("show_large_field") ||
         id.equals("show_wide_field") ||
-        id.equals("show_small_field"))) {
+        id.equals("show_small_field"))
+    ) {
       var label = menuItem.getLabel();
       //var prefix = id.toString();
       var fieldMenu = new WatchUi.Menu2({ :title => label + " items" });
 
       var storageKey = id.toString();
 
-      var array = $.getStorageValue(storageKey, []) as Array<Numeric or Boolean or FieldLayout>;
+      var array =
+        $.getStorageValue(storageKey, []) as
+        Array<Numeric or Boolean or FieldLayout>;
       // Check size
       if (
         $.ensureArraySize(
@@ -344,7 +349,69 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       );
       return;
     }
-    
+
+    if (id instanceof String && id.equals("alerts")) {
+      var alertMenu = new WatchUi.Menu2({ :title => "Alerts" });
+
+      var mi;
+      var boolean;
+
+      mi = new WatchUi.MenuItem(
+        "Calorie window|0~ (kcal)",
+        null,
+        "alert_calories_window",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      alertMenu.addItem(mi);
+
+      boolean = $.getStorageValue("alert_calories_sound", false) as Boolean;
+      alertMenu.addItem(
+        new WatchUi.ToggleMenuItem(
+          "Calorie sound",
+          null,
+          "alert_calories_sound",
+          boolean,
+          null
+        )
+      );
+
+      mi = new WatchUi.MenuItem(
+        "Time window|0~ (min)",
+        null,
+        "alert_timeelapsed_window",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      alertMenu.addItem(mi);
+
+      boolean = $.getStorageValue("alert_timeelapsed_sound", false) as Boolean;
+      alertMenu.addItem(
+        new WatchUi.ToggleMenuItem(
+          "Time sound",
+          null,
+          "alert_timeelapsed_sound",
+          boolean,
+          null
+        )
+      );
+
+      mi = new WatchUi.MenuItem(
+        "Display time|0~ (sec)",
+        null,
+        "alert_displaytime_sec",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      alertMenu.addItem(mi);
+
+      WatchUi.pushView(
+        alertMenu,
+        new $.GeneralMenuDelegate(),
+        WatchUi.SLIDE_UP
+      );
+      return;
+    }
   }
 
   function onSelectedSelection(
@@ -380,8 +447,12 @@ class GeneralMenuDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     // Column field selection
-    if (id instanceof String && id.find("|") != null 
-    && (_item.getLabel().find("Bar") != null || _item.getLabel().find("Layout") != null)) {
+    if (
+      id instanceof String &&
+      id.find("|") != null &&
+      (_item.getLabel().find("Bar") != null ||
+        _item.getLabel().find("Layout") != null)
+    ) {
       var prefix = stringLeft(id, "|", "");
       var index = stringRight(id, "|", "").toNumber();
       if (prefix == "" || index == null) {
@@ -407,7 +478,10 @@ class GeneralMenuDelegate extends WatchUi.Menu2InputDelegate {
       return;
     }
 
-    if (id.equals("target_heart_rate_zone") || id.equals("target_average_heart_rate_zone")) {
+    if (
+      id.equals("target_heart_rate_zone") ||
+      id.equals("target_average_heart_rate_zone")
+    ) {
       var sp = new selectionMenuPicker("Target heartrate zone", id as String);
       sp.add("Zone 1", null, 1);
       sp.add("Zone 2", null, 2);
@@ -599,7 +673,7 @@ function getFieldTypeAsString(fieldType as FieldType) as String {
   switch (fieldType) {
     case FTUnknown:
       return "Unknown";
-    // Duration related fields  
+    // Duration related fields
     case FTDistance:
       return "Distance";
     case FTDistanceToDestination:
@@ -609,12 +683,12 @@ function getFieldTypeAsString(fieldType as FieldType) as String {
     case FTDistanceOrNavDestination:
       return "Dist or Nav destination";
     case FTMinutesElapsed:
-      return "Minutes elapsed";
+      return "Time elapsed";
     case FTCalories:
       return "Calories";
     case FTTrainingStressScore:
       return "Training stress score";
-    // Average related fields  
+    // Average related fields
     case FTAverageSpeed:
       return "Avg speed";
     case FTAverageCadence:
@@ -636,7 +710,7 @@ function getFieldTypeAsString(fieldType as FieldType) as String {
       return "Power";
     case FTHeartRateZone:
       return "Heart rate zone";
-      // Other
+    // Other
     case FTTotalAscent:
       return "Total ascent";
     case FTTotalDescent:

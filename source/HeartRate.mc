@@ -56,10 +56,10 @@ public class HeartRate {
             zoneFloor = mWarmUpHeartRate;
             zoneCeiling = mHeartRateZones[0];            
             mIsInWarmUp = true;
-            System.println("HeartRate: In Warmup Zone! liveHR=" + liveHeartRate + " warmupHR=" + mWarmUpHeartRate + " zoneFloor=" + zoneFloor + " zoneCeiling=" + zoneCeiling);
+            // System.println("HeartRate: In Warmup Zone! liveHR=" + liveHeartRate + " warmupHR=" + mWarmUpHeartRate + " zoneFloor=" + zoneFloor + " zoneCeiling=" + zoneCeiling);
         } else {
             mIsInWarmUp = false;
-            System.println("HeartRate: In Normal Zone! liveHR=" + liveHeartRate + " zoneFloor=" + zoneFloor + " zoneCeiling=" + zoneCeiling);
+            // System.println("HeartRate: In Normal Zone! liveHR=" + liveHeartRate + " zoneFloor=" + zoneFloor + " zoneCeiling=" + zoneCeiling);
         }
 
         // 2. Handle the edge case if your live HR hasn't even reached the zone yet

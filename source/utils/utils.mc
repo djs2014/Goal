@@ -59,6 +59,25 @@ function logInfo(info) as Void {
   System.println(timeString);
 }
 
+function formatSecondsToHMS(totalSeconds as Number?) as String {
+    if (totalSeconds == null) {
+        return "00:00:00";
+    }
+
+    // 1. Extract the individual time components using integer division and modulo
+    var hours   = totalSeconds / 3600;
+    var minutes = (totalSeconds % 3600) / 60;
+    var seconds = totalSeconds % 60;
+
+    // 2. Format into hh:mm:ss with zero-padding
+    // "%02d" means: print as a decimal integer, at least 2 digits wide, padding with 0 if needed
+    return Lang.format("$1$:$2$:$3$", [
+        hours.format("%02d"),
+        minutes.format("%02d"),
+        seconds.format("%02d")
+    ]);
+}
+
 // TODO add start index 
 function removeZeros(sourceArray as Array<Numeric>) as Array<Numeric> {
     var size = sourceArray.size();

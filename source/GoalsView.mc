@@ -44,6 +44,7 @@ class GoalsView extends WatchUi.DataField {
     hidden var mNormPowerEngine as NormPowerEngine = new NormPowerEngine();
     hidden var mHasCourseNavigation as Boolean = false;
 
+
     function initialize() {
         DataField.initialize();
     }
@@ -53,6 +54,7 @@ class GoalsView extends WatchUi.DataField {
     hidden var mFieldShowValues as Boolean = false;
     hidden var mFieldColumnGap as Number = 8;
     hidden var mFieldDivider as Number = 80;
+
     function onLayout(dc as Graphics.Dc) as Void {
         mCurrentEdgeField = $.getEdgeField(dc);
 
@@ -81,7 +83,7 @@ class GoalsView extends WatchUi.DataField {
                 $.getStorageValue("show_one_field", [$.gShowFieldsArraySize]) as
                 Array<Numeric or FieldLayout or Boolean>;
         }
-        
+
         $.logInfo(["onLayout: showFields:", showFields]);
 
         mFieldLayout = showFields[0] as FieldLayout;
@@ -151,7 +153,7 @@ class GoalsView extends WatchUi.DataField {
                     );
                     //}
                 }
-
+//System.println(["Compute: mProgressFieldValues:", mProgressFieldValues]);
                 var cadence =
                     $.getActivityValue(info, :currentCadence, 0) as Number;
                 if (!mHasCadence) {
@@ -230,12 +232,15 @@ class GoalsView extends WatchUi.DataField {
     // Display the value you computed here. This will be called
     // once a second when the data field is visible.
     function onUpdate(dc as Graphics.Dc) as Void {
-        if ($.gExitedMenu) {
-            // fix for leaving menu, draw complete screen, large field
+        // Force reset the hardware clipping mask back to full canvas size
+        if (dc has :clearClip) {
             dc.clearClip();
+        }
+        if ($.gExitedMenu) {
+            onLayout(dc);
             $.gExitedMenu = false;
         }
-
+        
         var backgroundColor = getBackgroundColor();
         mDarkBackground = backgroundColor == Graphics.COLOR_BLACK;
         dc.setColor(backgroundColor, backgroundColor);
@@ -370,6 +375,7 @@ class GoalsView extends WatchUi.DataField {
         var colors = getThemeColor(mDarkBackground);
         var visualProgress =
             progress > 1.0 ? 1.0 : progress < 0.0 ? 0.0 : progress;
+        var hasAttention = mProgress.hasActiveAlert(fieldType);
 
         dc.setPenWidth(1);
         // Draw the background "Empty" track
@@ -384,9 +390,9 @@ class GoalsView extends WatchUi.DataField {
             dc.fillRoundedRectangle(x, y + h - fillHeight, w, fillHeight, 4);
         }
 
-        if (mFieldDivider>0) {
+        if (mFieldDivider > 0) {
             // Draw a horizontal divider line at the specified height from the bottom
-            var dividerY = y + h - (h * mFieldDivider/100).toNumber();
+            var dividerY = y + h - ((h * mFieldDivider) / 100).toNumber();
             if (fillHeight != dividerY - y) {
                 // Only draw the divider if it is not exactly at the fill height
                 dc.setColor(colors[:divider], Graphics.COLOR_TRANSPARENT);
@@ -395,8 +401,14 @@ class GoalsView extends WatchUi.DataField {
         }
 
         // draw a border around the bar for better visibility
-        dc.setColor(colors[:border], Graphics.COLOR_TRANSPARENT);
+        if (hasAttention) {
+            dc.setColor(colors[:borderAttention], Graphics.COLOR_TRANSPARENT);
+            dc.setPenWidth(2);
+        } else {
+            dc.setColor(colors[:border], Graphics.COLOR_TRANSPARENT);
+        }
         dc.drawRoundedRectangle(x, y, w, h, 4);
+        dc.setPenWidth(1);
 
         // Embedded Checkmark Overlay (If Goal is met/exceeded)
         if (progress >= 1.0) {
@@ -422,22 +434,26 @@ class GoalsView extends WatchUi.DataField {
                 cx + checkSize,
                 cy - checkSize
             );
+            dc.setPenWidth(1);
         }
-        if (mFieldShowLabels || mShowDetails) {
+        if (mFieldShowLabels || mShowDetails || hasAttention) {
             // Label centered at the bottom of the bar when paused
             var tx = x + w / 2;
             var ty = y + h - dc.getFontHeight(Graphics.FONT_XTINY) - 2;
-            var label = getFieldLabel(fieldType);
+            var textLabel = getFieldLabel(fieldType);
+            if (hasAttention) {
+                textLabel = "EAT";
+            }
 
             var maxBarTextWidth = w - 4; // Leave a 2px padding buffer on each side
             var fitCount = $.getMaxCharactersThatFit(
                 dc,
-                label,
+                textLabel,
                 Graphics.FONT_XTINY,
                 maxBarTextWidth
             );
 
-            if (label.length() <= fitCount) {
+            if (textLabel.length() <= fitCount) {
                 var currentUnderlyingColor = trackColor; // Default track background
                 // Check if the text is submerged in the filled part of the bar
 
@@ -465,14 +481,14 @@ class GoalsView extends WatchUi.DataField {
                     tx,
                     ty,
                     Graphics.FONT_XTINY,
-                    label,
+                    textLabel,
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER
                 );
             } else {
                 // Draw text vertical
                 drawStackedVerticalLabel(
                     dc,
-                    label,
+                    textLabel,
                     Graphics.FONT_XTINY,
                     x,
                     w,
@@ -550,6 +566,7 @@ class GoalsView extends WatchUi.DataField {
         var colors = getThemeColor(mDarkBackground);
         var visualProgress =
             progress > 1.0 ? 1.0 : progress < 0.0 ? 0.0 : progress;
+        var hasAttention = mProgress.hasActiveAlert(fieldType);
 
         // 1. Draw the empty background track
         var trackColor = colors[:track];
@@ -565,19 +582,25 @@ class GoalsView extends WatchUi.DataField {
             dc.fillRoundedRectangle(x, y, fillWidth, h, 4);
         }
 
-        if (mFieldDivider>0) {
+        if (mFieldDivider > 0) {
             // Draw a vertical divider line at the specified position from the left
-            var dividerX = x + (w * mFieldDivider/100).toNumber();
+            var dividerX = x + ((w * mFieldDivider) / 100).toNumber();
             if (fillRightX != dividerX) {
                 // Only draw the divider if it is not exactly at the fill width
                 dc.setColor(colors[:divider], Graphics.COLOR_TRANSPARENT);
                 dc.drawLine(dividerX, y, dividerX, y + h);
             }
         }
-        
+
         // draw a border around the bar for better visibility
-        dc.setColor(colors[:border], Graphics.COLOR_TRANSPARENT);
+        if (hasAttention) {
+            dc.setColor(colors[:borderAttention], Graphics.COLOR_TRANSPARENT);
+            dc.setPenWidth(2);
+        } else {
+            dc.setColor(colors[:border], Graphics.COLOR_TRANSPARENT);
+        }
         dc.drawRoundedRectangle(x, y, w, h, 4);
+        dc.setPenWidth(1);
 
         // 5. Inline Checkmark (Rendered at the far right edge of the bar)
         // Inline Checkmark (Centered at the far right edge of the horizontal bar)
@@ -599,10 +622,14 @@ class GoalsView extends WatchUi.DataField {
                 cx + checkSize,
                 cy - checkSize
             );
+            dc.setPenWidth(1);
         }
 
-        if (mFieldShowLabels || mShowDetails) {
+        if (mFieldShowLabels || mShowDetails || hasAttention) {
             var textLabel = getFieldLabelWide(fieldType);
+            if (hasAttention) {
+                textLabel += " EAT!";
+            }
             var font = Graphics.FONT_XTINY;
 
             // 3. Draw the horizontal text character-by-character
@@ -653,93 +680,65 @@ class GoalsView extends WatchUi.DataField {
                 currentX += charWidth;
             }
 
-        // Only show values if the progress is less than 100% and the user has requested to show values
-        if (progress < 1.0 && mFieldShowValues && mShowDetails) {
-            var idxField = mProgressFields.indexOf(fieldType);
-            if (idxField >= 0 && idxField < mProgressFieldValues.size()) {
-                var textValue = getFormattedValue(
-                    mProgressFieldValues[idxField],
-                    fieldType
-                );
-                // Position text: Centered vertically inside the bar height, with a 6px right margin
-                var fontValue = Graphics.FONT_XTINY;
-                var fontValueHeight = dc.getFontHeight(fontValue);
-                var textValueY = y + (h - fontValueHeight) / 2;
-                var startValueX = x + w - 6; // Right-align with a 6px margin from the right edge
-
-                // Draw the value text character-by-character from right to left
-                for (var i = textValue.length()-1; i >= 0; i--) {
-                    var charStr = textValue.substring(i, i + 1);
-                    var charWidth = dc.getTextWidthInPixels(charStr, fontValue);
-
-                    // Determine the horizontal midpoint of this specific letter
-                    var charMidX = startValueX - charWidth / 2;
-
-                    // Contrast Check: Is this letter's midpoint inside the filled color block?
-                    var underlyingColor = trackColor;
-                    if (fillWidth > 0 && charMidX <= fillRightX) {
-                        underlyingColor = barColor; // Letter is sitting on top of the color fill
-                    }
-
-                    // Apply your HSP formula logic
-                    if (isColorLight(underlyingColor)) {
-                        dc.setColor(
-                            Graphics.COLOR_BLACK,
-                            Graphics.COLOR_TRANSPARENT
-                        );
-                    } else {
-                        dc.setColor(
-                            Graphics.COLOR_WHITE,
-                            Graphics.COLOR_TRANSPARENT
-                        );
-                    }
-
-                    // Draw the single character (use Left justification so they chain properly)
-                    dc.drawText(
-                        startValueX - charWidth,
-                        textValueY,
-                        fontValue,
-                        charStr,
-                        Graphics.TEXT_JUSTIFY_LEFT
+            // Only show values if the progress is less than 100% and the user has requested to show values
+            if (progress < 1.0 && mFieldShowValues && mShowDetails) {
+                var idxField = mProgressFields.indexOf(fieldType);
+                if (idxField >= 0 && idxField < mProgressFieldValues.size()) {
+                    var textValue = getFormattedValue(
+                        mProgressFieldValues[idxField],
+                        fieldType
                     );
+                    // Position text: Centered vertically inside the bar height, with a 6px right margin
+                    var fontValue = Graphics.FONT_XTINY;
+                    var fontValueHeight = dc.getFontHeight(fontValue);
+                    var textValueY = y + (h - fontValueHeight) / 2;
+                    var startValueX = x + w - 6; // Right-align with a 6px margin from the right edge
 
-                    // Move the starting X position leftward for the next character
-                    startValueX -= charWidth;
+                    // Draw the value text character-by-character from right to left
+                    for (var i = textValue.length() - 1; i >= 0; i--) {
+                        var charStr = textValue.substring(i, i + 1);
+                        var charWidth = dc.getTextWidthInPixels(
+                            charStr,
+                            fontValue
+                        );
+
+                        // Determine the horizontal midpoint of this specific letter
+                        var charMidX = startValueX - charWidth / 2;
+
+                        // Contrast Check: Is this letter's midpoint inside the filled color block?
+                        var underlyingColor = trackColor;
+                        if (fillWidth > 0 && charMidX <= fillRightX) {
+                            underlyingColor = barColor; // Letter is sitting on top of the color fill
+                        }
+
+                        // Apply your HSP formula logic
+                        if (isColorLight(underlyingColor)) {
+                            dc.setColor(
+                                Graphics.COLOR_BLACK,
+                                Graphics.COLOR_TRANSPARENT
+                            );
+                        } else {
+                            dc.setColor(
+                                Graphics.COLOR_WHITE,
+                                Graphics.COLOR_TRANSPARENT
+                            );
+                        }
+
+                        // Draw the single character (use Left justification so they chain properly)
+                        dc.drawText(
+                            startValueX - charWidth,
+                            textValueY,
+                            fontValue,
+                            charStr,
+                            Graphics.TEXT_JUSTIFY_LEFT
+                        );
+
+                        // Move the starting X position leftward for the next character
+                        startValueX -= charWidth;
+                    }
                 }
             }
-        }
         } // mFieldShowLabels || mShowDetails)
-
-        // TODO fix color contrast for the value text when it is over the filled part of the bar
-        // if (progress < 1.0 && mFieldShowValues && mShowDetails) {
-        //     // Show actual values for the fieldType if requested using the same color as last character for the label text
-        //     var idxField = mProgressFields.indexOf(fieldType);
-        //     if (idxField >= 0 && idxField < mProgressFieldValues.size()) {
-        //         var textValue = getFormattedValue(
-        //             mProgressFieldValues[idxField],
-        //             fieldType
-        //         );
-
-        //         var font = Graphics.FONT_XTINY;
-        //         var fontHeight = dc.getFontHeight(font);
-        //         var textY = y + (h - fontHeight) / 2;
-        //         var textX = x + w - 6; // Right-align with a 6px margin from the right edge
-        //         // TODO: get background color at this position to determine contrast for the value text
-
-
-        //         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
-        //         dc.drawText(
-        //             textX,
-        //             textY,
-        //             font,
-        //             getFormattedValue(
-        //                 mProgressFieldValues[idxField],
-        //                 fieldType
-        //             ),
-        //             Graphics.TEXT_JUSTIFY_RIGHT
-        //         );
-        //     }
-        // }
     }
     hidden function getFormattedValue(
         value as Float or Number or Null,
@@ -774,8 +773,8 @@ class GoalsView extends WatchUi.DataField {
             case FTTotalDescent:
                 return value.format("%.0f") + " M"; // Ascent/Descent is already in meters
             case FTMinutesElapsed:
-                // TODO convert to HH:MM:SS
-                return (value / 60.0f).format("%.1f") + " MIN"; // Convert seconds to minutes
+                // value is in minutes, convert to seconds for HH:MM:SS formatting
+                return formatSecondsToHMS(value.toNumber() * 60); // Convert minutes to HH:MM:SS
             case FTIntensityFactor:
                 return value.format("%.2f"); // Intensity Factor is unitless
             case FTTrainingStressScore:
@@ -903,13 +902,14 @@ class GoalsView extends WatchUi.DataField {
             case FTTotalDescent:
                 return "TOTAL DESCENT";
             case FTMinutesElapsed:
-                return "MINUTES ELAPSED";
+                return "TIME ELAPSED";
             case FTAverageHeartRateZone:
                 if ($.gHeartRate.getIsInWarmUp()) {
                     return "AVG HRZ WARMUP";
                 }
                 return (
-                    "AVG HEARTRATEZONE " + $.gTargetAverageHeartRateZone.format("%0d")
+                    "AVG HEARTRATEZONE " +
+                    $.gTargetAverageHeartRateZone.format("%0d")
                 );
             case FTHeartRateZone:
                 if ($.gHeartRate.getIsInWarmUp()) {
@@ -941,13 +941,19 @@ class GoalsView extends WatchUi.DataField {
     const COLOR_GAINSBORO = 0xdcdcdc; // 86% Brightness - Safe, solid background track
     const COLOR_SILVER_LIGHT = 0xd3d3d3; // 83% Brightness - Noticeably lighter than standard Garmin Lt Gray
 
+    const COLOR_ELECTRIC_BLUE  = 0x00A8FF;
     function getThemeColor(darkBackground) as Dictionary {
         return {
             :border => darkBackground
                 ? COLOR_SILVER_LIGHT
                 : Graphics.COLOR_DK_GRAY,
             :track => darkBackground ? Graphics.COLOR_DK_GRAY : COLOR_PLATINUM,
-            :divider => darkBackground ? Graphics.COLOR_BLACK : Graphics.COLOR_WHITE,
+            :divider => darkBackground
+                ? Graphics.COLOR_BLACK
+                : Graphics.COLOR_WHITE,
+            :borderAttention => darkBackground
+                ? COLOR_ALABASTER
+                : COLOR_ELECTRIC_BLUE,
         };
     }
 }
