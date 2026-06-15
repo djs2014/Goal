@@ -119,7 +119,7 @@ class Progress {
             case FTAverageHeartRateZone:
                 return $.gHeartRate.calculateZoneProgress(
                     $.getActivityValue(info, :averageHeartRate, 0) as Number,
-                    $.gTargetHeartRateZone
+                    $.gTargetAverageHeartRateZone
                 );
             case FTHeartRateZone:
                 return $.gHeartRate.calculateZoneProgress(

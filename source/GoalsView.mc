@@ -835,7 +835,7 @@ class GoalsView extends WatchUi.DataField {
                 if ($.gHeartRate.getIsInWarmUp()) {
                     return "øZ0";
                 }
-                return "øZ" + $.gTargetHeartRateZone.format("%d");
+                return "øZ" + $.gTargetAverageHeartRateZone.format("%d");
             case FTPower:
                 return "PWR";
             case FTAveragePower:
@@ -904,9 +904,16 @@ class GoalsView extends WatchUi.DataField {
                 return "TOTAL DESCENT";
             case FTMinutesElapsed:
                 return "MINUTES ELAPSED";
+            case FTAverageHeartRateZone:
+                if ($.gHeartRate.getIsInWarmUp()) {
+                    return "AVG HRZ WARMUP";
+                }
+                return (
+                    "AVG HEARTRATEZONE " + $.gTargetAverageHeartRateZone.format("%0d")
+                );
             case FTHeartRateZone:
                 if ($.gHeartRate.getIsInWarmUp()) {
-                    return "HEARTRATEZONE WARMUP";
+                    return "HRZ WARMUP";
                 }
                 return "HEARTRATEZONE " + $.gTargetHeartRateZone.format("%0d");
             case FTDistanceToDestination:
@@ -922,7 +929,7 @@ class GoalsView extends WatchUi.DataField {
             case FTIntensityFactor:
                 return "INTENSITY FACTOR";
             case FTTrainingStressScore:
-                return "TRAINING STRESS SCORE";
+                return "TRAINING STRESSSCORE";
             default:
                 return "";
         }

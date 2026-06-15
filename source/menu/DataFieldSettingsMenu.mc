@@ -202,6 +202,17 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       );
       targetMenu.addItem(mi);
 
+      mi = new WatchUi.MenuItem(
+        "Average heart rate zone",
+        null,
+        "target_average_heart_rate_zone",
+        null
+      );
+      mi.setSubLabel(
+        "zone " + $.getStorageNumberAsString(mi.getId() as String)
+      );
+      targetMenu.addItem(mi);
+
       // FTIntensityFactor
       // Common values for Intensity Factor (IF) in cycling range from less than 0.60 for recovery rides to 1.2 for very short,
       // intense efforts. Typical endurance rides score between 0.60 and 0.80, while tempo training sessions usually fall
@@ -396,7 +407,7 @@ class GeneralMenuDelegate extends WatchUi.Menu2InputDelegate {
       return;
     }
 
-    if (id.equals("target_heart_rate_zone")) {
+    if (id.equals("target_heart_rate_zone") || id.equals("target_average_heart_rate_zone")) {
       var sp = new selectionMenuPicker("Target heartrate zone", id as String);
       sp.add("Zone 1", null, 1);
       sp.add("Zone 2", null, 2);
@@ -588,44 +599,48 @@ function getFieldTypeAsString(fieldType as FieldType) as String {
   switch (fieldType) {
     case FTUnknown:
       return "Unknown";
+    // Duration related fields  
     case FTDistance:
       return "Distance";
-    case FTCalories:
-      return "Calories";
-    case FTAverageHeartRateZone:
-      return "Avg heartrate";
-    case FTPower:
-      return "Power";
-    case FTAveragePower:
-      return "Avg power";
-    case FTAverageSpeed:
-      return "Avg speed";
-    case FTAverageCadence:
-      return "Avg cadence";
-    case FTNormalizedPower:
-      return "Normalized power";
-    case FTTotalAscent:
-      return "Total ascent";
-    case FTTotalDescent:
-      return "Total descent";
-    case FTMinutesElapsed:
-      return "Minutes elapsed";
-    case FTHeartRateZone:
-      return "Heart rate zone";
     case FTDistanceToDestination:
       return "Dist to destination";
     case FTDistanceToNext:
       return "Distance to next";
     case FTDistanceOrNavDestination:
       return "Dist or Nav destination";
+    case FTMinutesElapsed:
+      return "Minutes elapsed";
+    case FTCalories:
+      return "Calories";
     case FTTrainingStressScore:
       return "Training stress score";
+    // Average related fields  
+    case FTAverageSpeed:
+      return "Avg speed";
+    case FTAverageCadence:
+      return "Avg cadence";
+    case FTAveragePower:
+      return "Avg power";
+    case FTAverageHeartRateZone:
+      return "Avg heartrate zone";
+    case FTNormalizedPower:
+      return "Normalized power";
     case FTIntensityFactor:
       return "Intensity factor";
-    case FTCadence:
-      return "Cadence";
+    // Current related fields
     case FTSpeed:
       return "Speed";
+    case FTCadence:
+      return "Cadence";
+    case FTPower:
+      return "Power";
+    case FTHeartRateZone:
+      return "Heart rate zone";
+      // Other
+    case FTTotalAscent:
+      return "Total ascent";
+    case FTTotalDescent:
+      return "Total descent";
     default:
       return "Unknown";
   }

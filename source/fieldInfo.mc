@@ -28,8 +28,8 @@ enum FieldType {
     // Current related fields
     FTSpeed = 14,  
     FTCadence = 15,  
-    FTHeartRateZone = 16,  
-    FTPower = 17, 
+    FTPower = 16, 
+    FTHeartRateZone = 17,  
     // Other
     FTTotalAscent = 18,
     FTTotalDescent = 19,
