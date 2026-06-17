@@ -53,12 +53,17 @@ class GoalsApp extends Application.AppBase {
                         true, // show values
                         4, // gap
                         80, // divider at
-                        FTDistanceOrNavDestination,
+                        FTDistance,
+                        FTMinutesElapsed,
+                        FTCalories,
                         FTTrainingStressScore,
                         FTAverageSpeed,
-                        FTAveragePower,
                         FTAverageCadence,
+                        FTAveragePower,
                         FTAverageHeartRateZone,
+                        FTNormalizedPower,
+                        FTIntensityFactor,
+
                     ] as Array<Numeric or FieldLayout or Boolean>
                 );
                 Storage.setValue(
@@ -69,13 +74,13 @@ class GoalsApp extends Application.AppBase {
                         false, // show values
                         8, // gap
                         80, // divider at
-                        FTDistanceOrNavDestination,
-                        FTTrainingStressScore,
-                        FTCalories,
+                        FTDistance,
                         FTMinutesElapsed,
+                        FTCalories,
+                        FTTrainingStressScore,
                         FTSpeed,
-                        FTPower,
                         FTCadence,
+                        FTPower,
                         FTHeartRateZone,
                     ] as Array<Numeric or FieldLayout or Boolean>
                 );
@@ -83,55 +88,63 @@ class GoalsApp extends Application.AppBase {
                     "show_wide_field",
                     [
                         FLVertical, // layout
-                        false, // show labels
+                        true, // show labels
                         false, // show values
                         8, // gap
                         80, // divider at
-                        FTDistanceOrNavDestination,
-                        FTTrainingStressScore,
-                        FTCalories,
+                        FTDistance,
                         FTMinutesElapsed,
+                        FTCalories,
+                        FTTrainingStressScore,
                         FTSpeed,
-                        FTPower,
                         FTCadence,
+                        FTPower,
                         FTHeartRateZone,
                     ] as Array<Numeric or FieldLayout or Boolean>
                 );
                 Storage.setValue(
                     "show_small_field",
                     [
-                        FLHorizontal, // layout
+                        FLVertical, // layout
                         false, // show labels
                         false, // show values
                         1, // gap
                         80, // divider at
-                        FTDistanceOrNavDestination,
+                        FTDistance,
+                        FTMinutesElapsed,
+                        FTCalories,
                         FTTrainingStressScore,
                         FTSpeed,
-                        FTPower,
                         FTCadence,
+                        FTPower,
                         FTHeartRateZone,
                     ] as Array<Numeric or FieldLayout or Boolean>
                 );
 
-                Storage.setValue("target_distance", 150); // km
-                Storage.setValue("target_minutes_elapsed", 300); // minutes
-                Storage.setValue("target_calories", 2000); // calories
-                Storage.setValue("target_training_stress_score", 150); // TSS
-                Storage.setValue("target_average_power", 200); // watts
-                Storage.setValue("target_average_speed", 28); // km/h
-                Storage.setValue("target_average_cadence", 90); // rpm
-                Storage.setValue("target_average_heart_rate_zone", 2); // zone
-                Storage.setValue("target_normalized_power", 230); // watts
-                Storage.setValue("target_intensity_factor", 0.9); // IF
-                Storage.setValue("target_power", 0); // watts
-                Storage.setValue("target_speed", 30); // km/h
-                Storage.setValue("target_cadence", 90); // rpm
-                Storage.setValue("target_heart_rate_zone", 2); // zone
-                Storage.setValue("target_total_ascent", 500); // meters
-                Storage.setValue("target_total_descent", 500); // meters
+                // Init for casual scenario 80km
+                Storage.setValue("preset_distance", 80); // km
+                Storage.setValue("preset_time_elapsed", 0); // minutes
+                Storage.setValue("preset_suffer_factor", 1.0); // calories
+                $.applyPreset("preset_casual"); 
 
-                Storage.setValue("alert_calories_window", 300); // calories
+                // Storage.setValue("target_distance", 150); // km
+                // Storage.setValue("target_minutes_elapsed", 300); // minutes
+                // Storage.setValue("target_calories", 2000); // calories
+                // Storage.setValue("target_training_stress_score", 150); // TSS
+                // Storage.setValue("target_average_power", 200); // watts
+                // Storage.setValue("target_average_speed", 28); // km/h
+                // Storage.setValue("target_average_cadence", 90); // rpm
+                // Storage.setValue("target_average_heart_rate_zone", 2); // zone
+                // Storage.setValue("target_normalized_power", 230); // watts
+                // Storage.setValue("target_intensity_factor", 0.9); // IF
+                // Storage.setValue("target_power", 0); // watts
+                // Storage.setValue("target_speed", 30); // km/h
+                // Storage.setValue("target_cadence", 90); // rpm
+                // Storage.setValue("target_heart_rate_zone", 2.0f); // zone
+                // Storage.setValue("target_total_ascent", 500); // meters
+                // Storage.setValue("target_total_descent", 500); // meters
+                
+                Storage.setValue("alert_calories_window", 700); // calories loop
                 Storage.setValue("alert_calories_sound", false); // sound
                 Storage.setValue("alert_timeelapsed_window", 0); // minutes
                 Storage.setValue("alert_timeelapsed_sound", false); // sound
@@ -196,6 +209,10 @@ class GoalsApp extends Application.AppBase {
                     "target_average_power",
                     $.gTargetAveragePower
                 ) as Number;
+            if ($.gTargetAveragePower == 0) {
+                $.gTargetAveragePower = $.getUserFtp();
+            }
+
             $.gTargetAverageSpeed =
                 $.getStorageValue(
                     "target_average_speed",
@@ -231,9 +248,9 @@ class GoalsApp extends Application.AppBase {
                     $.gTargetMinutesElapsed
                 ) as Number;
             $.gTargetHeartRateZone =
-                $.getStorageValue("target_heart_rate_zone", 2) as Number;
+                $.getStorageValue("target_heart_rate_zone", 2.0f) as Float;
             $.gTargetAverageHeartRateZone =
-                $.getStorageValue("target_average_heart_rate_zone", 2) as Number;
+                $.getStorageValue("target_average_heart_rate_zone", 2.0f) as Float;
             $.gHeartRate.initHrZones();
 
             $.gTargetIntensityFactor =
@@ -290,14 +307,14 @@ var gTargetTrainingStressScore as Number = 150;
 var gTargetAveragePower as Number = 200;
 var gTargetAverageSpeed as Number = 28;
 var gTargetAverageCadence as Number = 90;
-var gTargetAverageHeartRateZone as Number = 2;
+var gTargetAverageHeartRateZone as Float = 2.0f;
 var gTargetNormalizedPower as Number = 230;
 var gTargetIntensityFactor as Float = 0.9;
 
 var gTargetPower as Number = 0; // watts, default from user profile ftp if available, otherwise 250 watts
 var gTargetSpeed as Number = 30; // km/h
 var gTargetCadence as Number = 90;
-var gTargetHeartRateZone as Number = 2;
+var gTargetHeartRateZone as Float = 2.0f;
 
 var gTargetTotalAscent as Number = 500;
 var gTargetTotalDescent as Number = 500;

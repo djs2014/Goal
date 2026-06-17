@@ -76,6 +76,82 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       return;
     }
 
+    if (id instanceof String && id.equals("presets")) {
+      var presetsMenu = new WatchUi.Menu2({ :title => "Presets" });
+
+      var mi;
+      var presetsIdx = 0;
+      mi = new WatchUi.MenuItem(
+        "Select distance, or|0~ (km)",
+        null,
+        "preset_distance",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      presetsMenu.addItem(mi);
+
+      presetsIdx++;
+      mi = new WatchUi.MenuItem(
+        "Select duration|0~(min)",
+        null,
+        "preset_time_elapsed",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      presetsMenu.addItem(mi);
+
+      presetsIdx++;
+      mi = new WatchUi.MenuItem(
+        "Suffer factor|0.5-2.0",
+        null,
+        "preset_suffer_factor",
+        null
+      );
+      mi.setSubLabel($.getStorageFloatAsString(mi.getId() as String));
+      presetsMenu.addItem(mi);
+
+      presetsIdx++;
+      mi = new WatchUi.MenuItem("Casual", null, "preset_casual", null);
+      presetsMenu.addItem(mi);
+
+      presetsIdx++;
+      mi = new WatchUi.MenuItem("Endurance", null, "preset_endurance", null);
+      presetsMenu.addItem(mi);
+
+      presetsIdx++;
+      mi = new WatchUi.MenuItem(
+        "Short and fast",
+        null,
+        "preset_short_fast",
+        null
+      );
+      presetsMenu.addItem(mi);
+
+      presetsIdx++;
+      mi = new WatchUi.MenuItem(
+        "Weight loss",
+        null,
+        "preset_weight_loss",
+        null
+      );
+      presetsMenu.addItem(mi);
+
+      presetsIdx++;
+      mi = new WatchUi.MenuItem("Cardio", null, "preset_cardio", null);
+      presetsMenu.addItem(mi);
+
+      presetsIdx++;
+      mi = new WatchUi.MenuItem("Recovery", null, "preset_recovery", null);
+      presetsMenu.addItem(mi);
+
+      WatchUi.pushView(
+        presetsMenu,
+        new $.PresetsMenuDelegate(presetsMenu, presetsIdx),
+        WatchUi.SLIDE_UP
+      );
+      return;
+    }
+
     if (id instanceof String && id.equals("goals")) {
       var targetMenu = new WatchUi.Menu2({ :title => "Goals" });
 
@@ -85,6 +161,15 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         "Distance|0~ (km)",
         null,
         "target_distance",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      targetMenu.addItem(mi);
+
+      mi = new WatchUi.MenuItem(
+        "Time elapsed|0~(min)",
+        null,
+        "target_minutes_elapsed",
         null
       );
       mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
@@ -119,6 +204,22 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         "Average power|0~(W)",
         null,
         "target_average_power",
+        null
+      );
+      targetPower = $.getStorageValue(mi.getId() as String, 0) as Number;
+      if (targetPower == 0) {
+        mi.setSubLabel(
+          "profile ftp: " + $.getUserFtp().format("%d") + " watts"
+        );
+      } else {
+        mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      }
+      targetMenu.addItem(mi);
+
+      mi = new WatchUi.MenuItem(
+        "Normalized power|0~(W)",
+        null,
+        "target_normalized_power",
         null
       );
       mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
@@ -156,61 +257,21 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       targetMenu.addItem(mi);
 
       mi = new WatchUi.MenuItem(
-        "Normalized power|0~(W)",
-        null,
-        "target_normalized_power",
-        null
-      );
-      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
-      targetMenu.addItem(mi);
-
-      mi = new WatchUi.MenuItem(
-        "Total ascent|0~(m)",
-        null,
-        "target_total_ascent",
-        null
-      );
-      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
-      targetMenu.addItem(mi);
-
-      mi = new WatchUi.MenuItem(
-        "Total descent|0~(m)",
-        null,
-        "target_total_descent",
-        null
-      );
-      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
-      targetMenu.addItem(mi);
-
-      mi = new WatchUi.MenuItem(
-        "Time elapsed|0~(min)",
-        null,
-        "target_minutes_elapsed",
-        null
-      );
-      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
-      targetMenu.addItem(mi);
-
-      mi = new WatchUi.MenuItem(
-        "Heart rate zone",
+        "Heart rate zone|1.0-5.0",
         null,
         "target_heart_rate_zone",
         null
       );
-      mi.setSubLabel(
-        "zone " + $.getStorageNumberAsString(mi.getId() as String)
-      );
+      mi.setSubLabel("zone " + $.getStorageFloatAsString(mi.getId() as String));
       targetMenu.addItem(mi);
 
       mi = new WatchUi.MenuItem(
-        "Average heart rate zone",
+        "Average heart rate zone|1.0-5.0",
         null,
         "target_average_heart_rate_zone",
         null
       );
-      mi.setSubLabel(
-        "zone " + $.getStorageNumberAsString(mi.getId() as String)
-      );
+      mi.setSubLabel("zone " + $.getStorageFloatAsString(mi.getId() as String));
       targetMenu.addItem(mi);
 
       // FTIntensityFactor
@@ -237,6 +298,24 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         null
       );
       mi.setSubLabel($.getStorageFloatAsString(mi.getId() as String));
+      targetMenu.addItem(mi);
+
+      mi = new WatchUi.MenuItem(
+        "Total ascent|0~(m)",
+        null,
+        "target_total_ascent",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      targetMenu.addItem(mi);
+
+      mi = new WatchUi.MenuItem(
+        "Total descent|0~(m)",
+        null,
+        "target_total_descent",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
       targetMenu.addItem(mi);
 
       WatchUi.pushView(
@@ -478,21 +557,21 @@ class GeneralMenuDelegate extends WatchUi.Menu2InputDelegate {
       return;
     }
 
-    if (
-      id.equals("target_heart_rate_zone") ||
-      id.equals("target_average_heart_rate_zone")
-    ) {
-      var sp = new selectionMenuPicker("Target heartrate zone", id as String);
-      sp.add("Zone 1", null, 1);
-      sp.add("Zone 2", null, 2);
-      sp.add("Zone 3", null, 3);
-      sp.add("Zone 4", null, 4);
-      sp.add("Zone 5", null, 5);
+    // if (
+    //   id.equals("target_heart_rate_zone") ||
+    //   id.equals("target_average_heart_rate_zone")
+    // ) {
+    //   var sp = new selectionMenuPicker("Target heartrate zone", id as String);
+    //   sp.add("Zone 1", null, 1);
+    //   sp.add("Zone 2", null, 2);
+    //   sp.add("Zone 3", null, 3);
+    //   sp.add("Zone 4", null, 4);
+    //   sp.add("Zone 5", null, 5);
 
-      sp.setOnSelected(self, :onSelectedSelection, _item);
-      sp.show();
-      return;
-    }
+    //   sp.setOnSelected(self, :onSelectedSelection, _item);
+    //   sp.show();
+    //   return;
+    // }
 
     if (id instanceof String && _item instanceof ToggleMenuItem) {
       $.setStorageValueOrArray(id, _item.isEnabled());

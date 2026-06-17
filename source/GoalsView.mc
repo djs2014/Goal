@@ -84,7 +84,7 @@ class GoalsView extends WatchUi.DataField {
                 Array<Numeric or FieldLayout or Boolean>;
         }
 
-        $.logInfo(["onLayout: showFields:", showFields]);
+        // $.logInfo(["onLayout: showFields:", showFields]);
 
         mFieldLayout = showFields[0] as FieldLayout;
         mFieldShowLabels = showFields[1] == true;
@@ -99,8 +99,8 @@ class GoalsView extends WatchUi.DataField {
         mProgressFields = $.removeZeros(mProgressFields);
         // Add to maximum size to match mProgressArray size
         $.ensureArraySize(mProgressFields, $.gMaxProgressColumns, 0);
-        $.logInfo(["onLayout: mProgressFields:", mProgressFields]);
-        $.logInfo(["onLayout: mProgressFieldValues:", mProgressFieldValues]);
+        // $.logInfo(["onLayout: mProgressFields:", mProgressFields]);
+        // $.logInfo(["onLayout: mProgressFieldValues:", mProgressFieldValues]);
     }
 
     // The given info object contains all the current workout information.
@@ -680,8 +680,12 @@ class GoalsView extends WatchUi.DataField {
                 currentX += charWidth;
             }
 
+            // TEST 
+            var showValues = fieldType == FTDistanceOrNavDestination || fieldType == FTDistanceToDestination || fieldType == FTDistanceToNext;
             // Only show values if the progress is less than 100% and the user has requested to show values
-            if (progress < 1.0 && mFieldShowValues && mShowDetails) {
+            if (progress < 1.0 && (mFieldShowValues && mShowDetails) || showValues) {
+                System.println(["drawHorizontalProgressBar: Showing value for fieldType:", fieldType]);
+                System.println([ mProgressFieldValues]);
                 var idxField = mProgressFields.indexOf(fieldType);
                 if (idxField >= 0 && idxField < mProgressFieldValues.size()) {
                     var textValue = getFormattedValue(
@@ -758,7 +762,8 @@ class GoalsView extends WatchUi.DataField {
                 return value.format("%.0f") + " KCAL"; // Calories are already in kcal
             case FTAverageHeartRateZone:
             case FTHeartRateZone:
-                return value.format("%.0f"); // Number
+                System.println(["getFormattedValue: Heart Rate Zone:", value]);
+                return value.format("%.1f"); 
             case FTPower:
             case FTAveragePower:
             case FTNormalizedPower:
@@ -774,7 +779,7 @@ class GoalsView extends WatchUi.DataField {
                 return value.format("%.0f") + " M"; // Ascent/Descent is already in meters
             case FTMinutesElapsed:
                 // value is in minutes, convert to seconds for HH:MM:SS formatting
-                return formatSecondsToHMS(value.toNumber() * 60); // Convert minutes to HH:MM:SS
+                return $.formatSecondsToHMS(value.toNumber() * 60); // Convert minutes to HH:MM:SS
             case FTIntensityFactor:
                 return value.format("%.2f"); // Intensity Factor is unitless
             case FTTrainingStressScore:
@@ -826,14 +831,14 @@ class GoalsView extends WatchUi.DataField {
             case FTCalories:
                 return "CAL";
             case FTHeartRateZone:
-                if ($.gHeartRate.getIsInWarmUp()) {
-                    return "RZ0";
-                }
-                return "RZ" + $.gTargetHeartRateZone.format("%d");
+                // if ($.gHeartRate.getIsInWarmUp()) {
+                //     return "RZ0";
+                // }
+                return "Z" + $.gTargetHeartRateZone.format("%0.1f");
             case FTAverageHeartRateZone:
-                if ($.gHeartRate.getIsInWarmUp()) {
-                    return "øZ0";
-                }
+                // if ($.gHeartRate.getIsInWarmUp()) {
+                //     return "øZ0";
+                // }
                 return "øZ" + $.gTargetAverageHeartRateZone.format("%d");
             case FTPower:
                 return "PWR";
@@ -904,18 +909,18 @@ class GoalsView extends WatchUi.DataField {
             case FTMinutesElapsed:
                 return "TIME ELAPSED";
             case FTAverageHeartRateZone:
-                if ($.gHeartRate.getIsInWarmUp()) {
-                    return "AVG HRZ WARMUP";
-                }
+                // if ($.gHeartRate.getIsInWarmUp()) {
+                //     return "AVG HRZ WARMUP";
+                // }
                 return (
                     "AVG HEARTRATEZONE " +
-                    $.gTargetAverageHeartRateZone.format("%0d")
+                    $.gTargetAverageHeartRateZone.format("%0.1f")
                 );
             case FTHeartRateZone:
-                if ($.gHeartRate.getIsInWarmUp()) {
-                    return "HRZ WARMUP";
-                }
-                return "HEARTRATEZONE " + $.gTargetHeartRateZone.format("%0d");
+                // if ($.gHeartRate.getIsInWarmUp()) {
+                //     return "HRZ WARMUP";
+                // }
+                return "HEARTRATEZONE " + $.gTargetHeartRateZone.format("%.1f");
             case FTDistanceToDestination:
                 return "DISTANCE TO DEST";
             case FTDistanceToNext:

@@ -354,6 +354,13 @@ class Progress {
     ) as Float {
         var currentDistance =
             $.getActivityValue(info, :distanceToDestination, 0.0f) as Float;
+
+        // System.println(
+        //     "calculateDistanceToDestinationProgress currentDistance: " +
+        //         currentDistance
+        // );    
+        // TODO: delay the reset of mMaxDistanceToDestination for a few seconds to avoid reset when the distance 
+        //temporarily jumps to 0 (e.g., when GPS signal is lost  
         if (currentDistance == null || currentDistance == 0.0f) {
             mMaxDistanceToDestination = 0.0f; // Reset if data is lost
             return 0.0f;

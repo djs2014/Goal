@@ -63,7 +63,8 @@ function formatSecondsToHMS(totalSeconds as Number?) as String {
     if (totalSeconds == null) {
         return "00:00:00";
     }
-
+    totalSeconds = totalSeconds.toNumber();
+    
     // 1. Extract the individual time components using integer division and modulo
     var hours   = totalSeconds / 3600;
     var minutes = (totalSeconds % 3600) / 60;
@@ -75,6 +76,22 @@ function formatSecondsToHMS(totalSeconds as Number?) as String {
         hours.format("%02d"),
         minutes.format("%02d"),
         seconds.format("%02d")
+    ]);
+}
+function formatSecondsToHM(totalSeconds as Number?) as String {
+    if (totalSeconds == null) {
+        return "00:00";
+    }
+    totalSeconds = totalSeconds.toNumber();
+    // 1. Extract the individual time components using integer division and modulo
+    var hours   = totalSeconds / 3600;
+    var minutes = (totalSeconds % 3600) / 60;
+    
+    // 2. Format into hh:mm:ss with zero-padding
+    // "%02d" means: print as a decimal integer, at least 2 digits wide, padding with 0 if needed
+    return Lang.format("$1$:$2$", [
+        hours.format("%02d"),
+        minutes.format("%02d")    
     ]);
 }
 

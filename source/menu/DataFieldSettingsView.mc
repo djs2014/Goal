@@ -59,6 +59,9 @@ class DataFieldSettingsDelegate extends WatchUi.BehaviorDelegate {
     mi = new WatchUi.MenuItem("Goals", null, "goals", null);
     menu.addItem(mi);
 
+    mi = new WatchUi.MenuItem("Goal presets", null, "presets", null);
+    menu.addItem(mi);
+
     mi = new WatchUi.MenuItem("One page field", null, "show_one_field", null);
     menu.addItem(mi);
     mi = new WatchUi.MenuItem("Large field", null, "show_large_field", null);
@@ -70,6 +73,7 @@ class DataFieldSettingsDelegate extends WatchUi.BehaviorDelegate {
 
     mi = new WatchUi.MenuItem("Alerts", null, "alerts", null);
     menu.addItem(mi);
+;
 
     mi = new WatchUi.MenuItem("Advanced", null, "advanced", null);
     menu.addItem(mi);

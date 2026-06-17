@@ -1,55 +1,16 @@
-clearclip issue
-pause distance value
-duration loop bug
-
 api level min API Level 5.2.2
-
+d2d d2n niet ok?
 ??remove zeros in show fields
 
-Preset goals:
+todo if distance set -> clear duration and vv
+
+todo readme for profiles
+pause values ?? cache values
+pause distance to test == distance value?
 
 
-Casual / Endurance / Short and fast
-
-function getDefaultTargetForField(type as FieldType) as Float {
-    switch (type) {
-        case FTDistance:                  return 60.0f;   // 60 km
-        case FTMinutesElapsed:            return 120.0f;  // 2 hours
-        case FTCalories:                  return 1000.0f; // 1000 kCal
-        case FTAverageSpeed:              return 30.0f;   // 30 km/h
-        case FTAverageCadence:            return 90.0f;   // 90 RPM
-        case FTIntensityFactor:           return 0.82f;   // 82% of FTP
-        case FTTotalAscent:               return 1000.0f; // 1000m climbing
-        default:                          return 1.0f;    // Avoid division by zero
-    }
-}
 
 
-Casual:
-The Goal: Socializing, recovery, coffee stops, or exploring without watching metrics intensely. The targets are kept low and relaxed, focusing purely on easy movement.
-Field Type,Typical Target,Why This Value?
-FTDistance,25.0 km,"A classic, relaxed 1.5-hour cruise."
-FTMinutesElapsed,90.0 mins,Standard time block before hitting a café.
-FTCalories,500 kcal,Enough to completely justify a coffee and pastry!
-FTAverageSpeed,22.0 km/h,"Gentle, non-competitive group or solo pace."
-FTAverageCadence,80.0 RPM,"A lazy, comfortable spin."
-FTHeartRateZone,Zone 1 or 2,Pure active recovery; conversational breathing.
-FTAveragePower,120W−150W,Very low torque on the pedals.
-FTIntensityFactor,0.55−0.65,Keeping the system stress completely minimized.
-
-Endurance Ride Profile
-
-    The Goal: Big volume base training, structured zone 2 pacing, or preparing for an upcoming sportive. The bars will fill up very slowly, helping you meter out your energy so you don't "bonk" (run out of fuel).
-Field Type,Typical Target,Why This Value?
-FTDistance,80.0 km (or 100 km),A serious half-to-full century block.
-FTMinutesElapsed,180.0 mins,3 solid hours in the saddle.
-FTCalories,1500 kcal,Tracks significant energy output for strict fueling strategies.
-FTAverageSpeed,28.0 km/h,"Efficient, steady-state cruising speed."
-FTAverageCadence,90.0 RPM,The high-efficiency sweet spot to save leg muscle glycogen.
-FTHeartRateZone,Zone 2,"The ""aerobic engine builder"" zone."
-FTAveragePower,180W−220W,Standard Zone 2 aerobic floor (depends heavily on individual FTP).
-FTIntensityFactor,0.70−0.75,Classic endurance pacing ceiling.
-FTTotalAscent,800 m,Rolling terrain management.
 
 3. Short and Fast Profile (HIIT / Criterium / Midweek Blast)
 
