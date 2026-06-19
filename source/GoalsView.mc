@@ -39,6 +39,8 @@ class GoalsView extends WatchUi.DataField {
     hidden var mProgressFieldValues as Array<Float> = new Array<
         Float
     >[$.gMaxProgressColumns];
+    // Used when D2D is null on pause
+    hidden var mProgressFieldValueDistance as Float = 0.0f;
 
     hidden var mProgress as Progress = new Progress();
     hidden var mNormPowerEngine as NormPowerEngine = new NormPowerEngine();
@@ -126,6 +128,12 @@ class GoalsView extends WatchUi.DataField {
         } else {
             mPauseExtendedCounter -= 1;
         }
+
+        // Check if we have course navigation data available by checking if distanceToDestination is non-zero
+        mHasCourseNavigation =
+            ($.getActivityValue(info, :distanceToDestination, 0.0f) as Float) >
+            0.0f;
+
         // $.logInfo(["Compute: Demo mode:", $.gDemo, "Paused:", mPaused]);
         if (mPaused && $.gDemo) {
             SimulateProgress(info);
@@ -146,13 +154,15 @@ class GoalsView extends WatchUi.DataField {
                         fieldType
                     );
 
-                    //if ($.gShowValues) {
                     mProgressFieldValues[i] = mProgress.getValueForField(
                         info,
                         fieldType
                     );
-                    //}
+                    // TODO check if this is needed, as mProgressFieldValues is already being set above
+                    // TODO switch to distance if d2d is 0
+                    // mProgressFieldValueDistance = $.getActivityValue(info, :elapsedDistance, 0.0f) as Float;                    
                 }
+
 //System.println(["Compute: mProgressFieldValues:", mProgressFieldValues]);
                 var cadence =
                     $.getActivityValue(info, :currentCadence, 0) as Number;
@@ -172,11 +182,7 @@ class GoalsView extends WatchUi.DataField {
                 }
             }
         }
-        // Check if we have course navigation data available by checking if distanceToDestination is non-zero
-        mHasCourseNavigation =
-            ($.getActivityValue(info, :distanceToDestination, 0.0f) as Float) >
-            0.0f;
-
+        
         var numBars = mProgressArray.size();
         for (var i = 0; i < numBars; i++) {
             mProgressColors[i] = getDynamicColor(mProgressArray[i]);
@@ -684,8 +690,8 @@ class GoalsView extends WatchUi.DataField {
             var showValues = fieldType == FTDistanceOrNavDestination || fieldType == FTDistanceToDestination || fieldType == FTDistanceToNext;
             // Only show values if the progress is less than 100% and the user has requested to show values
             if (progress < 1.0 && (mFieldShowValues && mShowDetails) || showValues) {
-                System.println(["drawHorizontalProgressBar: Showing value for fieldType:", fieldType]);
-                System.println([ mProgressFieldValues]);
+                // System.println(["drawHorizontalProgressBar: Showing value for fieldType:", fieldType]);
+                // System.println([ mProgressFieldValues]);
                 var idxField = mProgressFields.indexOf(fieldType);
                 if (idxField >= 0 && idxField < mProgressFieldValues.size()) {
                     var textValue = getFormattedValue(
@@ -762,7 +768,7 @@ class GoalsView extends WatchUi.DataField {
                 return value.format("%.0f") + " KCAL"; // Calories are already in kcal
             case FTAverageHeartRateZone:
             case FTHeartRateZone:
-                System.println(["getFormattedValue: Heart Rate Zone:", value]);
+                // System.println(["getFormattedValue: Heart Rate Zone:", value]);
                 return value.format("%.1f"); 
             case FTPower:
             case FTAveragePower:

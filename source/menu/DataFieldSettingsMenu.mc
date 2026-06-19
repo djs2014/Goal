@@ -94,7 +94,7 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       mi = new WatchUi.MenuItem(
         "Select duration|0~(min)",
         null,
-        "preset_time_elapsed",
+        "preset_duration",
         null
       );
       mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
@@ -111,20 +111,11 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       presetsMenu.addItem(mi);
 
       presetsIdx++;
+      mi = new WatchUi.MenuItem("Recovery", null, "preset_recovery", null);
+      presetsMenu.addItem(mi);
+
+      presetsIdx++;
       mi = new WatchUi.MenuItem("Casual", null, "preset_casual", null);
-      presetsMenu.addItem(mi);
-
-      presetsIdx++;
-      mi = new WatchUi.MenuItem("Endurance", null, "preset_endurance", null);
-      presetsMenu.addItem(mi);
-
-      presetsIdx++;
-      mi = new WatchUi.MenuItem(
-        "Short and fast",
-        null,
-        "preset_short_fast",
-        null
-      );
       presetsMenu.addItem(mi);
 
       presetsIdx++;
@@ -137,11 +128,20 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       presetsMenu.addItem(mi);
 
       presetsIdx++;
+      mi = new WatchUi.MenuItem("Endurance", null, "preset_endurance", null);
+      presetsMenu.addItem(mi);
+
+      presetsIdx++;
       mi = new WatchUi.MenuItem("Cardio", null, "preset_cardio", null);
       presetsMenu.addItem(mi);
 
       presetsIdx++;
-      mi = new WatchUi.MenuItem("Recovery", null, "preset_recovery", null);
+      mi = new WatchUi.MenuItem(
+        "Short and fast",
+        null,
+        "preset_short_fast",
+        null
+      );
       presetsMenu.addItem(mi);
 
       WatchUi.pushView(

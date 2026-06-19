@@ -17,7 +17,7 @@ using Toybox.Math;
 
 function getPresetSummary(profileId as String) as String {
     var distanceKm = $.getStorageValue("preset_distance", 0) as Number;
-    var durationMinutes = $.getStorageValue("preset_time_elapsed", 0) as Number;
+    var durationMinutes = $.getStorageValue("preset_duration", 0) as Number;
 
     var profileType = PROFILE_CASUAL;
     switch (profileId) {
@@ -75,7 +75,7 @@ function getPresetSummary(profileId as String) as String {
 
 function applyPreset(profileId as String) as Boolean {
     var distanceKm = $.getStorageValue("preset_distance", 0) as Number;
-    var durationMinutes = $.getStorageValue("preset_time_elapsed", 0) as Number;
+    var durationMinutes = $.getStorageValue("preset_duration", 0) as Number;
     var profileType = PROFILE_CASUAL;
 
     switch (profileId) {
@@ -452,12 +452,12 @@ class PresetsMenuDelegate extends WatchUi.Menu2InputDelegate {
 
     hidden var _currentPrompt as String = "";
     hidden var _parentMenu as WatchUi.Menu2;
-    hidden var _maxIdx as Number = 0;
+    hidden var _maxMenuItemIdx as Number = 0;
 
-    function initialize(parentMenu as WatchUi.Menu2, maxIdx as Number) {
+    function initialize(parentMenu as WatchUi.Menu2, maxMenuItemIdx as Number) {
         Menu2InputDelegate.initialize();
         _parentMenu = parentMenu;
-        _maxIdx = maxIdx;
+        _maxMenuItemIdx = maxMenuItemIdx;
     }
 
     function onSelect(menuItem as MenuItem) as Void {
@@ -494,7 +494,7 @@ class PresetsMenuDelegate extends WatchUi.Menu2InputDelegate {
                 if ($.applyPreset(id as String)) {
                     menuItem.setLabel(cleanLabel + " - applied!");
                     // clear other presets' sublabels
-                    for (var i = 0; i < _maxIdx; i++) {
+                    for (var i = 0; i < _maxMenuItemIdx; i++) {
                         var otherItem = _parentMenu.getItem(i);
                         var otherId = otherItem.getId();
                         if (
@@ -550,6 +550,25 @@ class PresetsMenuDelegate extends WatchUi.Menu2InputDelegate {
                 var key = _item.getId() as String;
                 $.setStorageValueOrArray(key, value);
                 (_item as MenuItem).setSubLabel(subLabel);
+
+                // if preset_distance set then clear preset_duration
+                var clearSubLabel = "";
+                if (key.equals("preset_distance")) {
+                    $.setStorageValueOrArray("preset_duration", 0);
+                    clearSubLabel = "preset_duration";
+                } else if (key.equals("preset_duration")) {
+                    $.setStorageValueOrArray("preset_distance", 0);
+                    clearSubLabel = "preset_distance";
+                }
+                if (clearSubLabel != "") {
+                    for (var i = 0; i < _maxMenuItemIdx; i++) {
+                        var otherItem = _parentMenu.getItem(i);
+                        var otherId = otherItem.getId();
+                        if (otherId.equals(clearSubLabel)) {
+                            otherItem.setSubLabel("0");
+                        }
+                    }
+                }
             }
         } catch (ex) {
             ex.printStackTrace();

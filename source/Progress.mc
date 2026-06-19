@@ -459,11 +459,11 @@ class Progress {
             case FTCalories:
                 return $.getActivityValue(info, :calories, 0) as Number;
             case FTAverageHeartRateZone:
-                return $.gHeartRate.getHeartRateZone(
+                return $.gHeartRate.calculateCurrentDecimalZone(
                     $.getActivityValue(info, :averageHeartRate, 0) as Number
                 );
             case FTHeartRateZone:
-                return $.gHeartRate.getHeartRateZone(
+                return $.gHeartRate.calculateCurrentDecimalZone(
                     $.getActivityValue(info, :currentHeartRate, 0) as Number
                 );
             case FTPower:

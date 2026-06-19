@@ -96,7 +96,7 @@ function formatSecondsToHM(totalSeconds as Number?) as String {
 }
 
 // TODO add start index 
-function removeZeros(sourceArray as Array<Numeric>) as Array<Numeric> {
+function removeZeros(sourceArray as Array<Numeric or FieldType>) as Array<Numeric or FieldType> {
     var size = sourceArray.size();
     
     // 1. First pass: Count how many non-zero elements exist

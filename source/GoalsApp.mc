@@ -123,7 +123,7 @@ class GoalsApp extends Application.AppBase {
 
                 // Init for casual scenario 80km
                 Storage.setValue("preset_distance", 80); // km
-                Storage.setValue("preset_time_elapsed", 0); // minutes
+                Storage.setValue("preset_duration", 0); // minutes
                 Storage.setValue("preset_suffer_factor", 1.0); // calories
                 $.applyPreset("preset_casual"); 
 

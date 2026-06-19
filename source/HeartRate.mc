@@ -86,16 +86,16 @@ public class HeartRate {
         // If the athlete is at the target BPM exactly, ratio is 1.0f
         var progressRatio = liveHeartRate.toFloat() / targetBpm;
 
-        // System.println(
-        //     "HeartRate: liveHR=" +
-        //         liveHeartRate +
-        //         " targetZone=" +
-        //         targetZone +
-        //         " targetBpm=" +
-        //         targetBpm +
-        //         " progressRatio=" +
-        //         progressRatio
-        // );
+        System.println(
+            "HeartRate: liveHR=" +
+                liveHeartRate +
+                " targetZone=" +
+                targetZone +
+                " targetBpm=" +
+                targetBpm +
+                " progressRatio=" +
+                calculateCurrentDecimalZone(liveHeartRate) 
+        );
         return progressRatio; // e.g., if HR is 166 and targetBpm is 166, returns 1.0f (Perfectly on target!)
 
         // 3. Perform standard linear normalization: (Value - Min) / (Max - Min)
@@ -125,7 +125,7 @@ public class HeartRate {
 
     function getBpmFromDecimalZone(decimalZone as Float) as Number {
         if (mHeartRateZones.size() < 6) {
-            return 0.0f;
+            return 0;
         }
 
         // Safety clamp to keep things within bounds
@@ -150,5 +150,40 @@ public class HeartRate {
         var targetBpm = zoneFloor + remainder * (zoneCeiling - zoneFloor);
 
         return targetBpm.toNumber(); // Round to the nearest whole heartbeat
+    }
+
+    function calculateCurrentDecimalZone(liveHeartRate as Number) as Float {
+        if (mHeartRateZones.size() < 6 || liveHeartRate <= 0) {
+            return 1.0f; // Default to Zone 1 if zones are uninitialized
+        }
+        
+    
+        // 2. Handle the absolute basement (Below Zone 1 floor)
+        if (liveHeartRate < mHeartRateZones[0]) {
+            return 1.0f;
+        }
+
+        // 3. Loop through boundaries to see where the live HR lands
+        for (var i = 1; i < 6; i++) {
+            var zoneFloor = mHeartRateZones[i - 1];
+            var zoneCeiling = mHeartRateZones[i];
+
+            if (liveHeartRate >= zoneFloor && liveHeartRate <= zoneCeiling) {
+                // Find the percentage of progress inside this single zone bracket
+                var chunkRange = (zoneCeiling - zoneFloor).toFloat();
+                var positionInChunk = (liveHeartRate - zoneFloor).toFloat();
+                if (chunkRange <= 0.0f) {
+                    return i.toFloat(); // Avoid division by zero
+                }
+                var fractionalZone = positionInChunk / chunkRange;
+
+                // Return the base zone index + the fractional progress
+                // (e.g., Index 1 means we are inside Zone 2, so 2.0f + fractionalZone)
+                return i.toFloat() + fractionalZone;
+            }
+        }
+
+        // 4. Handle the roof (Exceeding Zone 5 maximum)
+        return 5.9f;
     }
 }
