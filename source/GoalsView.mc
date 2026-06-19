@@ -36,9 +36,10 @@ class GoalsView extends WatchUi.DataField {
     hidden var mProgressColors as Array<Graphics.ColorType> = new Array<
         Graphics.ColorType
     >[$.gMaxProgressColumns];
+    // For all possible FieldTypes.
     hidden var mProgressFieldValues as Array<Float> = new Array<
         Float
-    >[$.gMaxProgressColumns];
+    >[$.FieldTypeCount];
     // Used when D2D is null on pause
     hidden var mProgressFieldValueDistance as Float = 0.0f;
 
@@ -154,16 +155,23 @@ class GoalsView extends WatchUi.DataField {
                         fieldType
                     );
 
-                    mProgressFieldValues[i] = mProgress.getValueForField(
-                        info,
-                        fieldType
-                    );
+                    // mProgressFieldValues[i] = mProgress.getValueForField(
+                    //     info,
+                    //     fieldType
+                    // );
                     // TODO check if this is needed, as mProgressFieldValues is already being set above
                     // TODO switch to distance if d2d is 0
                     // mProgressFieldValueDistance = $.getActivityValue(info, :elapsedDistance, 0.0f) as Float;                    
                 }
+                // Calculate for all fieldTypes the value
+                for (var i = 0; i < $.FieldTypeCount; i++) {
+                    var fieldType = i as FieldType;
+                    mProgressFieldValues[i] = mProgress.getValueForField(
+                        info,
+                        fieldType
+                    );
+                }
 
-//System.println(["Compute: mProgressFieldValues:", mProgressFieldValues]);
                 var cadence =
                     $.getActivityValue(info, :currentCadence, 0) as Number;
                 if (!mHasCadence) {
@@ -690,12 +698,12 @@ class GoalsView extends WatchUi.DataField {
             var showValues = fieldType == FTDistanceOrNavDestination || fieldType == FTDistanceToDestination || fieldType == FTDistanceToNext;
             // Only show values if the progress is less than 100% and the user has requested to show values
             if (progress < 1.0 && (mFieldShowValues && mShowDetails) || showValues) {
-                // System.println(["drawHorizontalProgressBar: Showing value for fieldType:", fieldType]);
-                // System.println([ mProgressFieldValues]);
-                var idxField = mProgressFields.indexOf(fieldType);
-                if (idxField >= 0 && idxField < mProgressFieldValues.size()) {
+                //System.println([mProgressFieldValues]);   
+                // index in mProgressFieldValues is fieldType as number, since mProgressFieldValues is an array indexed by FieldType
+                //var idxField = mProgressFields.indexOf(fieldType);
+                //if (idxField >= 0 && idxField < mProgressFieldValues.size()) {
                     var textValue = getFormattedValue(
-                        mProgressFieldValues[idxField],
+                        mProgressFieldValues[fieldType],
                         fieldType
                     );
                     // Position text: Centered vertically inside the bar height, with a 6px right margin
@@ -746,7 +754,7 @@ class GoalsView extends WatchUi.DataField {
                         // Move the starting X position leftward for the next character
                         startValueX -= charWidth;
                     }
-                }
+                //}
             }
         } // mFieldShowLabels || mShowDetails)
     }
@@ -785,7 +793,7 @@ class GoalsView extends WatchUi.DataField {
                 return value.format("%.0f") + " M"; // Ascent/Descent is already in meters
             case FTMinutesElapsed:
                 // value is in minutes, convert to seconds for HH:MM:SS formatting
-                return $.formatSecondsToHMS(value.toNumber() * 60); // Convert minutes to HH:MM:SS
+                return $.formatSecondsToHMS((value * 60).toNumber()); // Convert minutes to HH:MM:SS
             case FTIntensityFactor:
                 return value.format("%.2f"); // Intensity Factor is unitless
             case FTTrainingStressScore:

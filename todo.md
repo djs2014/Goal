@@ -4,64 +4,14 @@ d2d d2n niet ok?
 
 
 todo readme for profiles
-pause values ?? cache values
-pause distance to test == distance value?
+x pause values ?? cache values
+x pause distance to test == distance value?
 get HRZ as float based on actual HR
 show values vertical if possible
-calc all values -> for show diff data on diff fields
+x calc all values -> for show diff data on diff fields
 
 fancy layout -> rings / arc / 8
 
-
-3. Short and Fast Profile (HIIT / Criterium / Midweek Blast)
-
-The Goal: Intense intervals, racing, or ripping a local 1-hour loop to drop your friends. The targets are incredibly high-intensity, and your bars act as a tachometer pushing you deep into the red zone.
-
-Field Type,Typical Target,Why This Value?
-FTDistance,30.0 km,"A quick, hyper-focused loop."
-FTMinutesElapsed,45.0−60.0 mins,Perfect for lunchtime crits or focused midweek pain caves.
-FTCalories,700 kcal,High burn rate per minute due to massive anaerobic effort.
-FTAverageSpeed,34.0−38.0 km/h,"Fast pace lines, racing speeds, or heavy solo hammering."
-FTAverageCadence,95.0 RPM,Quick leg speed to buffer high-power anaerobic surges.
-FTHeartRateZone,Zone 4 or 5,Threshold and VO2max tracking.
-FTAveragePower,260W−320W,At or above threshold power.
-FTNormalizedPower,280W−340W,"Accounts for the violent, punchy spikes of short racing blocks."
-FTIntensityFactor,0.90−1.05+,Racing at the absolute limit of your current physical threshold.
-
-function applyRidingStylePresets(styleId as Number) as Void {
-    switch (styleId) {
-        case 1: // --- ENDURANCE PROFILE ---
-            barFields = [FTDistance, FTMinutesElapsed, FTAverageCadence, FTAveragePower];
-            barTargets = [80.0f, 180.0f, 90.0f, 200.0f]; 
-            break;
-
-        case 2: // --- SHORT & FAST PROFILE ---
-            barFields = [FTSpeed, FTCadence, FTHeartRateZone, FTNormalizedPower];
-            barTargets = [40.0f, 95.0f, 4.0f, 300.0f]; // Aiming for 40km/h sprint, 95rpm, Zone 4, 300W NP
-            break;
-
-        case 0:
-        default: // --- CASUAL PROFILE ---
-            barFields = [FTDistance, FTMinutesElapsed, FTCalories, FTAverageSpeed];
-            barTargets = [25.0f, 90.0f, 500.0f, 22.0f];
-            break;
-    }
-}
-
-4. The 150 km Endurance Preset Configuration
-
-Field Type,Target Goal,Why This Matters for 150 km
-FTDistance,150.0,Scales your main progress bar slowly. Seeing that bar pass 50% (75 km) is a massive psychological boost.
-FTMinutesElapsed,330.0,Set to 5.5 hours (or your personal goal time). It helps you pace your stops so you don't burn daylight.
-FTCalories,2500 to 3500,"Crucial: At 150 km, you will burn massive energy. Tracking calories burned tells you exactly when to eat."
-FTIntensityFactor,0.68 to 0.72,"Your hard limit. If your IF bar creeps up past 0.75 early in the ride, you will pay for it in the last 40 km."
-FTAverageCadence,90.0,"Keeps your stroke light. Lower cadences (e.g., 75 RPM) shift the load to your muscles, destroying your legs over 5 hours."
-
-The Ultra-Endurance Coding Hack: The "Nutrition Alert"
-
-On a 150 km ride, you need to consume roughly 60–90 grams of carbohydrates (around 240–360 calories) every single hour, regardless of how good you feel.
-
-You can make your FTCalories progress bar reset or flash every time you hit a 300-calorie burning milestone, turning it into a smart "Time to Eat!" indicator:
 
 
 1. Weight Loss Profile (Fat Oxidation)
