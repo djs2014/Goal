@@ -110,11 +110,12 @@ function applyPreset(profileId as String) as Boolean {
     Storage.setValue("target_duration", targets["target_duration"]);
     Storage.setValue("target_calories", targets["target_calories"]);
     Storage.setValue("target_power", targets["target_power"]);
+    Storage.setValue("target_average_power", targets["target_average_power"]);
     Storage.setValue(
         "target_normalized_power",
         targets["target_normalized_power"]
     );
-    Storage.setValue("target_average_power", targets["target_average_power"]);
+    Storage.setValue("target_speed", targets["target_speed"]);
     Storage.setValue("target_average_speed", targets["target_average_speed"]);
     Storage.setValue("target_cadence", targets["target_cadence"]);
     Storage.setValue(
