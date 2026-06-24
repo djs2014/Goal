@@ -1,3 +1,8 @@
+plan:
+? track TSS over week..
+Circles layout as whatspeed etc.
+add vo2max formula -> ?? 
+
 api level min API Level 5.2.2
 d2d d2n niet ok?
 ??remove zeros in show fields

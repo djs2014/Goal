@@ -167,12 +167,13 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       targetMenu.addItem(mi);
 
       mi = new WatchUi.MenuItem(
-        "Time elapsed|0~(min)",
+        "Duration|0~(min)",
         null,
-        "target_minutes_elapsed",
+        "target_duration",
         null
       );
-      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      mi.setSubLabel($.getStorageNumberAsHHMM(mi.getId() as String) + " (" +
+      $.getStorageNumberAsString(mi.getId() as String) + " min)");
       targetMenu.addItem(mi);
 
       mi = new WatchUi.MenuItem(
@@ -743,6 +744,9 @@ function getFieldLayoutAsString(fieldLayout as FieldLayout) as String {
       return "Vertical";
     case FLHorizontal:
       return "Horizontal";
+    case FLCircles:
+      return "Circles";
+    
     default:
       return "unknown";
   }

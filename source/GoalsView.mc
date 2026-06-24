@@ -2,6 +2,7 @@ import Toybox.Activity;
 import Toybox.Graphics;
 import Toybox.Lang;
 import Toybox.WatchUi;
+using Toybox.Math;
 
 var gMaxProgressColumns as Number = 10;
 
@@ -46,7 +47,6 @@ class GoalsView extends WatchUi.DataField {
     hidden var mProgress as Progress = new Progress();
     hidden var mNormPowerEngine as NormPowerEngine = new NormPowerEngine();
     hidden var mHasCourseNavigation as Boolean = false;
-
 
     function initialize() {
         DataField.initialize();
@@ -161,7 +161,7 @@ class GoalsView extends WatchUi.DataField {
                     // );
                     // TODO check if this is needed, as mProgressFieldValues is already being set above
                     // TODO switch to distance if d2d is 0
-                    // mProgressFieldValueDistance = $.getActivityValue(info, :elapsedDistance, 0.0f) as Float;                    
+                    // mProgressFieldValueDistance = $.getActivityValue(info, :elapsedDistance, 0.0f) as Float;
                 }
                 // Calculate for all fieldTypes the value
                 for (var i = 0; i < $.FieldTypeCount; i++) {
@@ -190,7 +190,7 @@ class GoalsView extends WatchUi.DataField {
                 }
             }
         }
-        
+
         var numBars = mProgressArray.size();
         for (var i = 0; i < numBars; i++) {
             mProgressColors[i] = getDynamicColor(mProgressArray[i]);
@@ -254,7 +254,7 @@ class GoalsView extends WatchUi.DataField {
             onLayout(dc);
             $.gExitedMenu = false;
         }
-        
+
         var backgroundColor = getBackgroundColor();
         mDarkBackground = backgroundColor == Graphics.COLOR_BLACK;
         dc.setColor(backgroundColor, backgroundColor);
@@ -332,6 +332,50 @@ class GoalsView extends WatchUi.DataField {
                     );
                 }
                 break;
+            case FLCircles:
+                
+                var centerX = (screenW * 0.5).toNumber();
+                var centerY = (screenH * 0.5).toNumber();
+                var outerMaxRadius = (screenH * 0.4).toNumber();
+
+                drawTenColumnTargetRing(
+                    dc,
+                    centerX,
+                    centerY,
+                    outerMaxRadius,
+                    mProgressArray
+                );
+                // Render the hollow core numerical overlay
+                // dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+                // dc.drawText(
+                //     centerX,
+                //     centerY - 20,
+                //     Graphics.FONT_NUMBER_LARGE,
+                //     liveSpeed.format("%.0f"),
+                //     Graphics.TEXT_JUSTIFY_CENTER
+                // );
+                // dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+                // dc.drawText(
+                //     centerX,
+                //     centerY + 15,
+                //     Graphics.FONT_XTINY,
+                //     "KM/H",
+                //     Graphics.TEXT_JUSTIFY_CENTER
+                // );
+                break;
+            // case FLSpokeChart:
+            //     var centerXsc = (screenW * 0.5).toNumber();
+            //     var centerYsc = (screenH * 0.5).toNumber();
+            //     var outerMaxRadiussc = (screenH * 0.4).toNumber();
+
+            //     drawSpokeDashboard(
+            //         dc,
+            //         centerXsc,
+            //         centerYsc,
+            //         outerMaxRadiussc,
+            //         numBars,
+            //         mProgressArray
+            //     );
         }
     }
 
@@ -694,70 +738,218 @@ class GoalsView extends WatchUi.DataField {
                 currentX += charWidth;
             }
 
-            // TEST 
-            var showValues = fieldType == FTDistanceOrNavDestination || fieldType == FTDistanceToDestination || fieldType == FTDistanceToNext;
+            // TEST
+            var showValues =
+                fieldType == FTDistanceOrNavDestination ||
+                fieldType == FTDistanceToDestination ||
+                fieldType == FTDistanceToNext;
             // Only show values if the progress is less than 100% and the user has requested to show values
-            if (progress < 1.0 && (mFieldShowValues && mShowDetails) || showValues) {
-                //System.println([mProgressFieldValues]);   
+            if (
+                (progress < 1.0 && mFieldShowValues && mShowDetails) ||
+                showValues
+            ) {
+                //System.println([mProgressFieldValues]);
                 // index in mProgressFieldValues is fieldType as number, since mProgressFieldValues is an array indexed by FieldType
                 //var idxField = mProgressFields.indexOf(fieldType);
                 //if (idxField >= 0 && idxField < mProgressFieldValues.size()) {
-                    var textValue = getFormattedValue(
-                        mProgressFieldValues[fieldType],
-                        fieldType
-                    );
-                    // Position text: Centered vertically inside the bar height, with a 6px right margin
-                    var fontValue = Graphics.FONT_XTINY;
-                    var fontValueHeight = dc.getFontHeight(fontValue);
-                    var textValueY = y + (h - fontValueHeight) / 2;
-                    var startValueX = x + w - 6; // Right-align with a 6px margin from the right edge
+                var textValue = getFormattedValue(
+                    mProgressFieldValues[fieldType],
+                    fieldType
+                );
+                // Position text: Centered vertically inside the bar height, with a 6px right margin
+                var fontValue = Graphics.FONT_XTINY;
+                var fontValueHeight = dc.getFontHeight(fontValue);
+                var textValueY = y + (h - fontValueHeight) / 2;
+                var startValueX = x + w - 6; // Right-align with a 6px margin from the right edge
 
-                    // Draw the value text character-by-character from right to left
-                    for (var i = textValue.length() - 1; i >= 0; i--) {
-                        var charStr = textValue.substring(i, i + 1);
-                        var charWidth = dc.getTextWidthInPixels(
-                            charStr,
-                            fontValue
-                        );
+                // Draw the value text character-by-character from right to left
+                for (var i = textValue.length() - 1; i >= 0; i--) {
+                    var charStr = textValue.substring(i, i + 1);
+                    var charWidth = dc.getTextWidthInPixels(charStr, fontValue);
 
-                        // Determine the horizontal midpoint of this specific letter
-                        var charMidX = startValueX - charWidth / 2;
+                    // Determine the horizontal midpoint of this specific letter
+                    var charMidX = startValueX - charWidth / 2;
 
-                        // Contrast Check: Is this letter's midpoint inside the filled color block?
-                        var underlyingColor = trackColor;
-                        if (fillWidth > 0 && charMidX <= fillRightX) {
-                            underlyingColor = barColor; // Letter is sitting on top of the color fill
-                        }
-
-                        // Apply your HSP formula logic
-                        if (isColorLight(underlyingColor)) {
-                            dc.setColor(
-                                Graphics.COLOR_BLACK,
-                                Graphics.COLOR_TRANSPARENT
-                            );
-                        } else {
-                            dc.setColor(
-                                Graphics.COLOR_WHITE,
-                                Graphics.COLOR_TRANSPARENT
-                            );
-                        }
-
-                        // Draw the single character (use Left justification so they chain properly)
-                        dc.drawText(
-                            startValueX - charWidth,
-                            textValueY,
-                            fontValue,
-                            charStr,
-                            Graphics.TEXT_JUSTIFY_LEFT
-                        );
-
-                        // Move the starting X position leftward for the next character
-                        startValueX -= charWidth;
+                    // Contrast Check: Is this letter's midpoint inside the filled color block?
+                    var underlyingColor = trackColor;
+                    if (fillWidth > 0 && charMidX <= fillRightX) {
+                        underlyingColor = barColor; // Letter is sitting on top of the color fill
                     }
+
+                    // Apply your HSP formula logic
+                    if (isColorLight(underlyingColor)) {
+                        dc.setColor(
+                            Graphics.COLOR_BLACK,
+                            Graphics.COLOR_TRANSPARENT
+                        );
+                    } else {
+                        dc.setColor(
+                            Graphics.COLOR_WHITE,
+                            Graphics.COLOR_TRANSPARENT
+                        );
+                    }
+
+                    // Draw the single character (use Left justification so they chain properly)
+                    dc.drawText(
+                        startValueX - charWidth,
+                        textValueY,
+                        fontValue,
+                        charStr,
+                        Graphics.TEXT_JUSTIFY_LEFT
+                    );
+
+                    // Move the starting X position leftward for the next character
+                    startValueX -= charWidth;
+                }
                 //}
             }
         } // mFieldShowLabels || mShowDetails)
     }
+
+    function drawTenColumnTargetRing(
+        dc,
+        cX as Number,
+        cY as Number,
+        outerRadius as Number,
+        progressArray as Array<Float>
+    ) as Void {
+        var numColumns = 10;
+        var columnThickness = 4; // Thin, high-density professional lines
+        var columnSpacing = 2; // 2-pixel gap between data lanes
+
+        // 360-degree full circles look spectacular for clean column charts.
+        // We start at the top (90°) and draw clockwise.
+        var startAngle = 90;
+
+        // Loop from index 0 (innermost column) to index 9 (outermost column)
+        for (var i = 0; i < numColumns; i++) {
+            // Calculate radius moving from inside out
+            var currentRadius =
+                outerRadius -
+                (numColumns - 1 - i) * (columnThickness + columnSpacing);
+
+            // 1. Draw the underlying muted column track (0% track)
+            dc.setColor(0x222222, Graphics.COLOR_TRANSPARENT); // Very dark subtle gray track
+            dc.setPenWidth(columnThickness);
+            dc.drawCircle(cX, cY, currentRadius);
+
+            // 2. Fetch progress state and clamp safely
+            var progress = progressArray[i];
+            if (progress == null || progress < 0.0f) {
+                progress = 0.0f;
+            } else if (progress > 1.0f) {
+                progress = 1.0f;
+            }
+
+            if (progress > 0.001f) {
+                // Calculate exact sweeping angle based on percentage
+                var sweepAngle = (progress * 360).toNumber();
+                var endAngle = startAngle - sweepAngle;
+
+                // Set dynamic color based on progress tier or a column palette array
+                dc.setColor(
+                    getColumnColorPalette(i),
+                    Graphics.COLOR_TRANSPARENT
+                );
+                dc.drawArc(
+                    cX,
+                    cY,
+                    currentRadius,
+                    Graphics.ARC_CLOCKWISE,
+                    startAngle,
+                    endAngle
+                );
+            }
+        }
+
+        dc.setPenWidth(1); // Reset standard pen width
+    }
+
+    // A clean cyber-grid color array going from deep blues to bright neon accents
+    function getColumnColorPalette(index as Number) as Number {
+        var palette = [
+            0x0055ff, // 0: Innermost
+            0x00aaff, // 1
+            0x00ffbb, // 2
+            0x00ff55, // 3
+            0x55ff00, // 4
+            0xaaff00, // 5
+            0xffff00, // 6
+            0xffaa00, // 7
+            0xff5500, // 8
+            0xff0055, // 9: Outermost
+        ];
+        return palette[index];
+    }
+
+    using Toybox.Graphics;
+    using Toybox.Math;
+
+    function drawSpokeDashboard(
+        dc,
+        cX as Number,
+        cY as Number,
+        maxRadius as Number,
+        numSpokes as Number,
+        progressArray as Array<Float>
+    ) as Void {
+        var angleStep = (360 / numSpokes).toNumber(); // 360 degrees / 10 columns
+        var minRadius = 25; // Leaving a hollow hub in the middle for your text/speed!
+
+        dc.setPenWidth(20); // Makes the columns chunky and highly visible while riding
+
+        for (var i = 0; i < numSpokes; i++) {
+            // Calculate the direction angle for this specific column in radians
+            var degrees = i * angleStep;
+            var rad = degrees * (Math.PI / 180.0f);
+
+            var cosVal = Math.cos(rad);
+            var sinVal = Math.sin(rad);
+
+            // 1. Calculate where the column starts (the inner hub border)
+            var startX = (cX + minRadius * cosVal).toNumber();
+            var startY = (cY + minRadius * sinVal).toNumber();
+
+            // 2. Draw the background track (representing the 100% goal line)
+            var maxTargetX = (cX + maxRadius * cosVal).toNumber();
+            var maxTargetY = (cY + maxRadius * sinVal).toNumber();
+
+            dc.setColor(0x222222, Graphics.COLOR_TRANSPARENT); // Subtle dark track
+            dc.drawLine(startX, startY, maxTargetX, maxTargetY);
+
+            // 3. Calculate and overlay the active progress column length
+            var progress = progressArray[i];
+            if (progress == null || progress < 0.0f) {
+                progress = 0.0f;
+            } else if (progress > 1.0f) {
+                progress = 1.0f;
+            }
+
+            if (progress > 0.01f) {
+                // Calculate current length between the inner hub and max radius
+                var activeRange = maxRadius - minRadius;
+                var currentRadius = minRadius + activeRange * progress;
+
+                var progressX = (cX + currentRadius * cosVal).toNumber();
+                var progressY = (cY + currentRadius * sinVal).toNumber();
+
+                // Apply your custom styling color to the active column spoke
+                dc.setColor(getSpokeColor(i), Graphics.COLOR_TRANSPARENT);
+                dc.drawLine(startX, startY, progressX, progressY);
+            }
+        }
+
+        dc.setPenWidth(1); // Reset canvas line settings
+    }
+
+    function getSpokeColor(index as Number) as Number {
+        var colors = [
+            0x00aaff, 0x00ff55, 0xffff00, 0xff5500, 0xaa00ff, 0x0055ff,
+            0x00ffbb, 0x55ff00, 0xffaa00, 0xff0055,
+        ];
+        return colors[index];
+    }
+
     hidden function getFormattedValue(
         value as Float or Number or Null,
         fieldType as FieldType
@@ -777,7 +969,7 @@ class GoalsView extends WatchUi.DataField {
             case FTAverageHeartRateZone:
             case FTHeartRateZone:
                 // System.println(["getFormattedValue: Heart Rate Zone:", value]);
-                return value.format("%.1f"); 
+                return value.format("%.1f");
             case FTPower:
             case FTAveragePower:
             case FTNormalizedPower:
@@ -960,7 +1152,7 @@ class GoalsView extends WatchUi.DataField {
     const COLOR_GAINSBORO = 0xdcdcdc; // 86% Brightness - Safe, solid background track
     const COLOR_SILVER_LIGHT = 0xd3d3d3; // 83% Brightness - Noticeably lighter than standard Garmin Lt Gray
 
-    const COLOR_ELECTRIC_BLUE  = 0x00A8FF;
+    const COLOR_ELECTRIC_BLUE = 0x00a8ff;
     function getThemeColor(darkBackground) as Dictionary {
         return {
             :border => darkBackground

@@ -128,7 +128,7 @@ class GoalsApp extends Application.AppBase {
                 $.applyPreset("preset_casual"); 
 
                 // Storage.setValue("target_distance", 150); // km
-                // Storage.setValue("target_minutes_elapsed", 300); // minutes
+                // Storage.setValue("target_duration", 300); // minutes
                 // Storage.setValue("target_calories", 2000); // calories
                 // Storage.setValue("target_training_stress_score", 150); // TSS
                 // Storage.setValue("target_average_power", 200); // watts
@@ -244,7 +244,7 @@ class GoalsApp extends Application.AppBase {
                 ) as Number;
             $.gTargetMinutesElapsed =
                 $.getStorageValue(
-                    "target_minutes_elapsed",
+                    "target_duration",
                     $.gTargetMinutesElapsed
                 ) as Number;
             $.gTargetHeartRateZone =

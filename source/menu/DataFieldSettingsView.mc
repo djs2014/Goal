@@ -124,3 +124,8 @@ function getStorageNumberAsString(key as String) as String {
 function getStorageFloatAsString(key as String) as String {
   return (getStorageValue(key, 0.0f) as Float).format("%.1f");
 }
+function getStorageNumberAsHHMM(key as String) as String {
+  var value = getStorageValue(key, 0) as Number;
+  var hhmm = $.formatSecondsToHM(value * 60); // Convert seconds to HH:MM
+  return hhmm;
+}

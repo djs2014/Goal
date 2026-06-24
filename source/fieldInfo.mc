@@ -4,7 +4,9 @@ import Toybox.System;
 const FieldLayoutCount = 2;
 enum FieldLayout {
     FLVertical = 0,
-    FLHorizontal = 1
+    FLHorizontal = 1,
+    FLCircles = 2,
+    //FLSpokeChart = 3,
 }
 
 var FieldTypeCount = 20; // incl the 0
