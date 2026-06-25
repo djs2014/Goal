@@ -358,9 +358,9 @@ class Progress {
         // System.println(
         //     "calculateDistanceToDestinationProgress currentDistance: " +
         //         currentDistance
-        // );    
-        // TODO: delay the reset of mMaxDistanceToDestination for a few seconds to avoid reset when the distance 
-        //temporarily jumps to 0 (e.g., when GPS signal is lost  
+        // );
+        // TODO: delay the reset of mMaxDistanceToDestination for a few seconds to avoid reset when the distance
+        //temporarily jumps to 0 (e.g., when GPS signal is lost
         if (currentDistance == null || currentDistance == 0.0f) {
             mMaxDistanceToDestination = 0.0f; // Reset if data is lost
             return 0.0f;
@@ -425,6 +425,11 @@ class Progress {
         return progress;
     }
 
+    // These values are null when activity is paused, so we cache them to avoid a sudden jump in the progress bar when paused
+    hidden var mCachedAverageSpeed as Float = 0.0f;
+    hidden var mCachedAverageCadence as Number = 0;
+    hidden var mCachedAveragePower as Number = 0;
+
     function getValueForField(
         info as Activity.Info,
         fieldType as FieldType
@@ -469,13 +474,25 @@ class Progress {
             case FTPower:
                 return $.getActivityValue(info, :currentPower, 0) as Number;
             case FTAveragePower:
-                return $.getActivityValue(info, :averagePower, 0) as Number;
+                var avgPower = $.getActivityValue(info, :averagePower, 0) as Number;
+                if (avgPower > 0) {
+                    mCachedAveragePower = avgPower;
+                }
+                return mCachedAveragePower;                
             case FTSpeed:
                 return $.getActivityValue(info, :currentSpeed, 0) as Float;
             case FTAverageSpeed:
-                return $.getActivityValue(info, :averageSpeed, 0) as Float;
+                var avgSpeed = $.getActivityValue(info, :averageSpeed, 0) as Float;
+                if (avgSpeed > 0) {
+                    mCachedAverageSpeed = avgSpeed;
+                }
+                return mCachedAverageSpeed;                
             case FTAverageCadence:
-                return $.getActivityValue(info, :averageCadence, 0) as Number;
+                var avgCadence = $.getActivityValue(info, :averageCadence, 0) as Number;
+                if (avgCadence > 0) {
+                    mCachedAverageCadence = avgCadence;
+                }
+                return mCachedAverageCadence;                
             case FTCadence:
                 return $.getActivityValue(info, :currentCadence, 0) as Number;
             case FTNormalizedPower:
