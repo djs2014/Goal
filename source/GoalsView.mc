@@ -37,10 +37,7 @@ class GoalsView extends WatchUi.DataField {
     hidden var mProgressColors as Array<Graphics.ColorType> = new Array<
         Graphics.ColorType
     >[$.gMaxProgressColumns];
-    // For all possible FieldTypes.
-    hidden var mProgressFieldValues as Array<Float> = new Array<
-        Float
-    >[$.FieldTypeCount];
+
     // Used when D2D is null on pause
     hidden var mProgressFieldValueDistance as Float = 0.0f;
 
@@ -103,7 +100,6 @@ class GoalsView extends WatchUi.DataField {
         // Add to maximum size to match mProgressArray size
         $.ensureArraySize(mProgressFields, $.gMaxProgressColumns, 0);
         // $.logInfo(["onLayout: mProgressFields:", mProgressFields]);
-        // $.logInfo(["onLayout: mProgressFieldValues:", mProgressFieldValues]);
     }
 
     // The given info object contains all the current workout information.
@@ -146,32 +142,22 @@ class GoalsView extends WatchUi.DataField {
             var np = mNormPowerEngine.compute(power);
             mProgress.setNormalizedPower(np);
 
+            // Calculate for all fieldTypes the value
+            mProgress.updateProgressFieldValues(info);
+
+            // TODO - use mProgressFieldValues in getProgressForField -> define it in mProgress class
+
+            // Update progress values
+            for (var i = 0; i < mProgressFields.size(); i++) {
+                var fieldType = mProgressFields[i];
+                mProgressArray[i] = mProgress.getProgressForField(
+                    info,
+                    fieldType
+                );
+            }
+System.println("Compute: mProgressArray: " + mProgressArray);
+
             if (!mPaused) {
-                // Update progress values
-                for (var i = 0; i < mProgressFields.size(); i++) {
-                    var fieldType = mProgressFields[i];
-                    mProgressArray[i] = mProgress.getProgressForField(
-                        info,
-                        fieldType
-                    );
-
-                    // mProgressFieldValues[i] = mProgress.getValueForField(
-                    //     info,
-                    //     fieldType
-                    // );
-                    // TODO check if this is needed, as mProgressFieldValues is already being set above
-                    // TODO switch to distance if d2d is 0
-                    // mProgressFieldValueDistance = $.getActivityValue(info, :elapsedDistance, 0.0f) as Float;
-                }
-                // Calculate for all fieldTypes the value
-                for (var i = 0; i < $.FieldTypeCount; i++) {
-                    var fieldType = i as FieldType;
-                    mProgressFieldValues[i] = mProgress.getValueForField(
-                        info,
-                        fieldType
-                    );
-                }
-
                 var cadence =
                     $.getActivityValue(info, :currentCadence, 0) as Number;
                 if (!mHasCadence) {
@@ -333,18 +319,40 @@ class GoalsView extends WatchUi.DataField {
                 }
                 break;
             case FLCircles:
-                
                 var centerX = (screenW * 0.5).toNumber();
                 var centerY = (screenH * 0.5).toNumber();
                 var outerMaxRadius = (screenH * 0.4).toNumber();
 
-                drawTenColumnTargetRing(
+                var currentSpeed = mProgress.getProgressFieldValue(FTSpeed);
+                if (currentSpeed == null) {
+                    currentSpeed = 0.0f;
+                }
+                var avgSpeed = mProgress.getProgressFieldValue(FTAverageSpeed);
+                if (avgSpeed == null) {
+                    avgSpeed = 0.0f;
+                }
+                if (currentSpeed > mMaxSpeed) {
+                    mMaxSpeed = currentSpeed;
+                }
+                var targetSpeed = $.gTargetSpeed;
+                drawSpeedGauge(
                     dc,
                     centerX,
                     centerY,
                     outerMaxRadius,
-                    mProgressArray
+                    currentSpeed,
+                    avgSpeed,
+                    mMaxSpeed,
+                    targetSpeed
                 );
+
+                // drawTenColumnTargetRing(
+                //     dc,
+                //     centerX,
+                //     centerY,
+                //     outerMaxRadius,
+                //     mProgressArray
+                // );
                 // Render the hollow core numerical overlay
                 // dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
                 // dc.drawText(
@@ -608,6 +616,8 @@ class GoalsView extends WatchUi.DataField {
         }
     }
 
+    hidden var mMaxSpeed as Float = 0.0f; // Store the maximum speed value for the speed gauge
+
     hidden function drawHorizontalProgressBar(
         dc as Graphics.Dc,
         x as Number,
@@ -748,12 +758,8 @@ class GoalsView extends WatchUi.DataField {
                 (progress < 1.0 && mFieldShowValues && mShowDetails) ||
                 showValues
             ) {
-                //System.println([mProgressFieldValues]);
-                // index in mProgressFieldValues is fieldType as number, since mProgressFieldValues is an array indexed by FieldType
-                //var idxField = mProgressFields.indexOf(fieldType);
-                //if (idxField >= 0 && idxField < mProgressFieldValues.size()) {
                 var textValue = getFormattedValue(
-                    mProgressFieldValues[fieldType],
+                    mProgress.getProgressFieldValue(fieldType),
                     fieldType
                 );
                 // Position text: Centered vertically inside the bar height, with a 6px right margin
@@ -804,6 +810,106 @@ class GoalsView extends WatchUi.DataField {
                 //}
             }
         } // mFieldShowLabels || mShowDetails)
+    }
+
+    // Parameters:
+    // dc - The device context
+    // cx, cy - Center coordinates of the gauge
+    // r - Radius of the circle
+    // currentSpeed - Current speed value
+    // avgSpeed - Average speed value
+    // maxSpeed - Maximum speed value
+    // targetSpeed - The target speed (acts as the 100% mark at 90 degrees right)
+    function drawSpeedGauge(
+        dc,
+        cx,
+        cy,
+        r,
+        currentSpeed,
+        avgSpeed,
+        maxSpeed,
+        targetSpeed
+    ) {
+        if (targetSpeed == null || targetSpeed <= 0) {
+            targetSpeed = 1.0;
+        } // Prevent division by zero
+
+        // 1. Draw the base semi-circle (from 180 degrees to 0 degrees)
+        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(3);
+        // Draw arc: cx, cy, radius, graphics_arc_direction, start_angle, end_angle
+        // In Connect IQ, 0deg is right, 90deg is top. We draw from left (180) to right (0) clockwise.
+        dc.drawArc(cx, cy, r, Graphics.ARC_CLOCKWISE, 180, 0);
+
+        // 2. Draw MAXIMUM Speed Indication (A small tick mark or dot)
+        var maxAngle = speedToAngle(maxSpeed, targetSpeed);
+        var maxStartX = cx + (r - 5) * Math.cos(maxAngle);
+        var maxStartY = cy - (r - 5) * Math.sin(maxAngle);
+        var maxEndX = cx + (r + 5) * Math.cos(maxAngle);
+        var maxEndY = cy - (r + 5) * Math.sin(maxAngle);
+        dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(3);
+        dc.drawLine(maxStartX, maxStartY, maxEndX, maxEndY);
+
+        // 3. Draw AVERAGE Speed Indication (A triangle pointing at the circle)
+        var avgAngle = speedToAngle(avgSpeed, targetSpeed);
+        // // Tip of the triangle on the circle
+        // var tipX = cx + r * Math.cos(avgAngle);
+        // var tipY = cy - r * Math.sin(avgAngle);
+        // // Base of the triangle (slightly outside the circle)
+        // var baseDist = r + 8;
+        // var baseX = cx + baseDist * Math.cos(avgAngle);
+        // var baseY = cy - baseDist * Math.sin(avgAngle);
+        // // Left and right corners of the triangle base
+        // var spread = 0.08; // How wide the triangle base is in radians
+        // var corner1X = cx + baseDist * Math.cos(avgAngle - spread);
+        // var corner1Y = cy - baseDist * Math.sin(avgAngle - spread);
+        // var corner2X = cx + baseDist * Math.cos(avgAngle + spread);
+        // var corner2Y = cy - baseDist * Math.sin(avgAngle + spread);
+
+        // dc.setColor(Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
+        // dc.fillPolygon([
+        //     [tipX, tipY],
+        //     [corner1X, corner1Y],
+        //     [corner2X, corner2Y],
+        // ]);
+
+        dc.setPenWidth(3);
+        dc.drawArc(
+            cx,
+            cy,
+            r,
+            Graphics.ARC_CLOCKWISE,
+            180,
+            avgAngle * (180 / Math.PI)
+        ); // Convert radians to degrees for drawArc
+
+        // 4. Draw CURRENT Speed (Arrow/line from center to circle)
+        var curAngle = speedToAngle(currentSpeed, targetSpeed);
+        var pointerEndX = cx + (r - 3) * Math.cos(curAngle);
+        var pointerEndY = cy - (r - 3) * Math.sin(curAngle);
+
+        dc.setColor(Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(4);
+        dc.drawLine(cx, cy, pointerEndX, pointerEndY);
+
+        // Optional: Draw a small center hub to clean up the line origin
+        dc.fillCircle(cx, cy, 5);
+    }
+
+    // --- Helper to convert speed to angles (in Radians for Math.sin/cos) ---
+    // 0 speed = 180 deg (PI rad)
+    // Target speed = 0 deg (0 rad)
+    function speedToAngle(speed, target) {
+        var percentage = speed / target;
+        if (percentage > 1.1) {
+            percentage = 1.1;
+        } // Cap slightly past target so it doesn't spin infinitely
+        if (percentage < 0) {
+            percentage = 0;
+        }
+        // Map 0->1 to PI->0 radians (Clockwise)
+        return Math.PI - percentage * Math.PI;
     }
 
     function drawTenColumnTargetRing(

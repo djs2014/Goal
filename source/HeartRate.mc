@@ -86,16 +86,16 @@ public class HeartRate {
         // If the athlete is at the target BPM exactly, ratio is 1.0f
         var progressRatio = liveHeartRate.toFloat() / targetBpm;
 
-        System.println(
-            "HeartRate: liveHR=" +
-                liveHeartRate +
-                " targetZone=" +
-                targetZone +
-                " targetBpm=" +
-                targetBpm +
-                " progressRatio=" +
-                calculateCurrentDecimalZone(liveHeartRate) 
-        );
+        // System.println(
+        //     "HeartRate: liveHR=" +
+        //         liveHeartRate +
+        //         " targetZone=" +
+        //         targetZone +
+        //         " targetBpm=" +
+        //         targetBpm +
+        //         " progressRatio=" +
+        //         calculateCurrentDecimalZone(liveHeartRate) 
+        // );
         return progressRatio; // e.g., if HR is 166 and targetBpm is 166, returns 1.0f (Perfectly on target!)
 
         // 3. Perform standard linear normalization: (Value - Min) / (Max - Min)

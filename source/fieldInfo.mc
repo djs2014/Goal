@@ -1,7 +1,7 @@
 import Toybox.Lang;
 import Toybox.System;
 
-const FieldLayoutCount = 2;
+const FieldLayoutCount = 3;
 enum FieldLayout {
     FLVertical = 0,
     FLHorizontal = 1,

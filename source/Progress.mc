@@ -10,6 +10,32 @@ class Progress {
         mUserFTP = $.getUserFtp();
     }
 
+    hidden var mProgressFieldValues as Array<Float or Number> = new Array<
+        Float
+    >[$.FieldTypeCount];
+    function updateProgressFieldValues(info as Activity.Info) as Void {
+        for (var i = 0; i < $.FieldTypeCount; i++) {
+            var fieldType = i as FieldType;
+            mProgressFieldValues[i] = getValueForField(info, fieldType);
+        }
+
+        // System.println([
+        //     "Compute: mProgressFieldValues:",
+        //     mProgressFieldValues,
+        // ]);
+    }
+
+    function getProgressFieldValue(fieldType as FieldType) as Float or Number {
+        if (fieldType < 0 || fieldType >= $.FieldTypeCount) {
+            return 0.0f;
+        }
+        var value = mProgressFieldValues[fieldType];
+        if (value == null) {
+            return 0.0f;
+        }
+        return value;
+    }
+
     function getProgressForField(
         info as Activity.Info,
         fieldType as FieldType
@@ -28,16 +54,12 @@ class Progress {
         }
 
         // Other fields
-        // var targetValue = getTargetValueForField(fieldType);
-        // if (targetValue == 0) {
-        //     return 0.0f;
-        // }
 
         switch (fieldType) {
             case FTUnknown:
                 return 0.0f;
             case FTCalories:
-                var calories = $.getActivityValue(info, :calories, 0) as Number;
+                var calories = getValueForField(info, fieldType) as Number;
                 if ($.gAlertCaloriesWindow > 20) {
                     var calorieWindow = $.gAlertCaloriesWindow;
                     var currentRemainder = calories % calorieWindow;
@@ -77,7 +99,7 @@ class Progress {
                     return 0.0f;
                 }
                 return (
-                    ($.getActivityValue(info, :currentPower, 0) as Number) /
+                    (getValueForField(info, fieldType) as Number) /
                     $.gTargetPower.toFloat()
                 );
             case FTAveragePower:
@@ -85,7 +107,7 @@ class Progress {
                     return 0.0f;
                 }
                 return (
-                    ($.getActivityValue(info, :averagePower, 0) as Number) /
+                    (getValueForField(info, fieldType) as Number) /
                     $.gTargetAveragePower.toFloat()
                 );
             case FTSpeed:
@@ -93,7 +115,7 @@ class Progress {
                     return 0.0f;
                 }
                 return (
-                    (($.getActivityValue(info, :currentSpeed, 0) as Float) *
+                    ((getValueForField(info, fieldType) as Float) *
                         3.6) /
                     $.gTargetSpeed.toFloat()
                 );
@@ -103,7 +125,7 @@ class Progress {
                 }
                 // convert meters/second to km/h by multiplying by 3.6
                 return (
-                    (($.getActivityValue(info, :averageSpeed, 0) as Float) *
+                    ((getValueForField(info, fieldType) as Float) *
                         3.6) /
                     $.gTargetAverageSpeed.toFloat()
                 );
@@ -112,7 +134,7 @@ class Progress {
                     return 0.0f;
                 }
                 return (
-                    ($.getActivityValue(info, :averageCadence, 0) as Number) /
+                    (getValueForField(info, fieldType) as Number) /
                     $.gTargetAverageCadence.toFloat()
                 );
             case FTCadence:
@@ -120,7 +142,7 @@ class Progress {
                     return 0.0f;
                 }
                 return (
-                    ($.getActivityValue(info, :currentCadence, 0) as Number) /
+                    (getValueForField(info, fieldType) as Number) /
                     $.gTargetCadence.toFloat()
                 );
             case FTNormalizedPower:
@@ -133,7 +155,7 @@ class Progress {
                     return 0.0f;
                 }
                 return (
-                    ($.getActivityValue(info, :totalAscent, 0) as Number) /
+                    (getValueForField(info, fieldType) as Number) /
                     $.gTargetTotalAscent.toFloat()
                 );
             case FTTotalDescent:
@@ -141,14 +163,13 @@ class Progress {
                     return 0.0f;
                 }
                 return (
-                    ($.getActivityValue(info, :totalDescent, 0) as Number) /
+                    (getValueForField(info, fieldType) as Number) /
                     $.gTargetTotalDescent.toFloat()
                 );
             case FTMinutesElapsed:
-                // convert milliseconds to minutes
+                // value already converted to minutes in getValueForField
                 var elapsedTime =
-                    ($.getActivityValue(info, :elapsedTime, 0) as Number) /
-                    60000.0;
+                    (getValueForField(info, fieldType) as Number);
                 if ($.gAlertTimeElapsedWindow > 0) {
                     var timeWindow = $.gAlertTimeElapsedWindow;
                     var currentRemainder = elapsedTime % timeWindow;
@@ -195,11 +216,12 @@ class Progress {
                 if ($.gTargetTrainingStressScore == 0) {
                     return 0.0f;
                 }
-                return (
-                    getTrainingStressScore(
-                        $.getActivityValue(info, :elapsedTime, 0) as Number
-                    ) / $.gTargetTrainingStressScore.toFloat()
-                );
+                return ( getValueForField(info, FTTrainingStressScore) as Number ) 
+                    / $.gTargetTrainingStressScore.toFloat();
+                    // getTrainingStressScore(
+                    //     $.getActivityValue(info, :elapsedTime, 0) as Number
+                    // ) / $.gTargetTrainingStressScore.toFloat()
+                // );
             default:
                 $.logInfo([
                     "getProgressForField Unknown field type:",
@@ -268,50 +290,6 @@ class Progress {
         }
         return elapsedDistance / targetValue.toFloat();
     }
-
-    // Fixed target values for each field type, based on user settings
-    // hidden function getTargetValueForField(
-    //     fieldType as FieldType
-    // ) as Number or Float {
-    //     switch (fieldType) {
-    //         case FTUnknown:
-    //             return 0;
-    //         case FTDistance:
-    //             return $.gTargetDistance;
-    //         case FTCalories:
-    //             return $.gTargetCalories;
-    //         case FTPower:
-    //             return $.gTargetPower;
-    //         case FTAveragePower:
-    //             return $.gTargetAveragePower;
-    //         case FTSpeed:
-    //             return $.gTargetSpeed;
-    //         case FTAverageSpeed:
-    //             return $.gTargetAverageSpeed;
-    //         case FTAverageCadence:
-    //             return $.gTargetAverageCadence;
-    //         case FTCadence:
-    //             return $.gTargetCadence;
-    //         case FTNormalizedPower:
-    //             return $.gTargetNormalizedPower;
-    //         case FTTotalAscent:
-    //             return $.gTargetTotalAscent;
-    //         case FTTotalDescent:
-    //             return $.gTargetTotalDescent;
-    //         case FTMinutesElapsed:
-    //             return $.gTargetMinutesElapsed;
-    //         case FTIntensityFactor:
-    //             return $.gTargetIntensityFactor;
-    //         case FTTrainingStressScore:
-    //             return $.gTargetTrainingStressScore;
-    //         default:
-    //             $.logInfo([
-    //                 "getTargetValueForField Unknown field type:",
-    //                 fieldType,
-    //             ]);
-    //             return 0;
-    //     }
-    // }
 
     hidden var mNormalizedPower as Number = 0;
     function setNormalizedPower(np as Number) as Void {
@@ -474,25 +452,28 @@ class Progress {
             case FTPower:
                 return $.getActivityValue(info, :currentPower, 0) as Number;
             case FTAveragePower:
-                var avgPower = $.getActivityValue(info, :averagePower, 0) as Number;
+                var avgPower =
+                    $.getActivityValue(info, :averagePower, 0) as Number;
                 if (avgPower > 0) {
                     mCachedAveragePower = avgPower;
                 }
-                return mCachedAveragePower;                
+                return mCachedAveragePower;
             case FTSpeed:
                 return $.getActivityValue(info, :currentSpeed, 0) as Float;
             case FTAverageSpeed:
-                var avgSpeed = $.getActivityValue(info, :averageSpeed, 0) as Float;
+                var avgSpeed =
+                    $.getActivityValue(info, :averageSpeed, 0) as Float;
                 if (avgSpeed > 0) {
                     mCachedAverageSpeed = avgSpeed;
                 }
-                return mCachedAverageSpeed;                
+                return mCachedAverageSpeed;
             case FTAverageCadence:
-                var avgCadence = $.getActivityValue(info, :averageCadence, 0) as Number;
+                var avgCadence =
+                    $.getActivityValue(info, :averageCadence, 0) as Number;
                 if (avgCadence > 0) {
                     mCachedAverageCadence = avgCadence;
                 }
-                return mCachedAverageCadence;                
+                return mCachedAverageCadence;
             case FTCadence:
                 return $.getActivityValue(info, :currentCadence, 0) as Number;
             case FTNormalizedPower:

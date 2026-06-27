@@ -1,6 +1,15 @@
+Circles layout as whatspeed etc.
+avg/max/current for speed / cadence / power / tss / etc (presets)
+- use setPenWidth to draw the line for avg
+- max 
+
+always calc all fields 
+array with 
+value / ratio / max / avg
+
+
 plan:
 ? track TSS over week..
-Circles layout as whatspeed etc.
 add vo2max formula -> ?? 
 
 api level min API Level 5.2.2
