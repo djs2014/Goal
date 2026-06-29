@@ -1,7 +1,8 @@
-Circles layout as whatspeed etc.
-avg/max/current for speed / cadence / power / tss / etc (presets)
-- use setPenWidth to draw the line for avg
-- max 
+drawProportionalGrid
+- if all 0 -> draw all even
+ - label on/off/automatic
+
+
 
 always calc all fields 
 array with 
@@ -99,3 +100,93 @@ dc.drawArc(centerX, centerY, radius, Gfx.ARC_COUNTER_CLOCKWISE, startAngle, star
 // Fill
 dc.setColor(barColor, Gfx.COLOR_TRANSPARENT);
 dc.drawArc(centerX, centerY, radius, Gfx.ARC_COUNTER_CLOCKWISE, startAngle, endAngle);
+
+
+
+----------
+case FLCircle:
+                var centerX = (screenW * 0.5).toNumber();
+                var centerY = (screenH * 0.5).toNumber();
+                // Use screenH, better for small fields, and also works for wide fields
+                var outerMaxRadius = (screenH * 0.4).toNumber();
+
+                var currentSpeed = mProgress.getProgressFieldValue(FTSpeed);
+                if (currentSpeed == null) {
+                    currentSpeed = 0.0f;
+                }
+                var avgSpeed = mProgress.getProgressFieldValue(FTAverageSpeed);
+                if (avgSpeed == null) {
+                    avgSpeed = 0.0f;
+                }
+                if (currentSpeed > mMaxSpeed) {
+                    mMaxSpeed = currentSpeed;
+                }
+                var targetSpeed = $.gTargetSpeed;
+                drawSpeedGauge(
+                    dc,
+                    centerX,
+                    centerY,
+                    outerMaxRadius,
+                    currentSpeed,
+                    avgSpeed,
+                    mMaxSpeed,
+                    targetSpeed
+                );
+                break;
+            case FL2Circles:
+                var centerX1 = (screenW * 0.3).toNumber();
+                var centerY1 = (screenH * 0.4).toNumber();
+                // Use screenH, better for small fields, and also works for wide fields
+                var outerMaxRadius2 = (screenH * 0.4).toNumber();
+
+                var currentPower = mProgress.getProgressFieldValue(FTPower);
+                if (currentPower == null) {
+                    currentPower = 0.0f;
+                }
+                var avgPower = mProgress.getProgressFieldValue(FTAveragePower);
+                if (avgPower == null) {
+                    avgPower = 0.0f;
+                }
+                // Calculate max in compute() TODO
+                if (currentPower > mMaxPower) {
+                    mMaxPower = currentPower;
+                }
+                var targetPower = $.gTargetPower;
+                drawSpeedGauge(
+                    dc,
+                    centerX1,
+                    centerY1,
+                    outerMaxRadius2,
+                    currentPower,
+                    avgPower,
+                    mMaxPower,
+                    targetPower
+                );
+                var centerX2 = screenW - (screenW * 0.3).toNumber();
+                var centerY2 = (screenH * 0.4).toNumber();
+
+                var currentSpeed2 = mProgress.getProgressFieldValue(FTSpeed);
+                if (currentSpeed2 == null) {
+                    currentSpeed2 = 0.0f;
+                }
+                var avgSpeed2 = mProgress.getProgressFieldValue(FTAverageSpeed);
+                if (avgSpeed2 == null) {
+                    avgSpeed2 = 0.0f;
+                }
+                // Calculate max in compute() TODO
+                if (currentSpeed2 > mMaxSpeed) {
+                    mMaxSpeed = currentSpeed2;
+                }
+                var targetSpeed2 = $.gTargetSpeed;
+                drawSpeedGauge(
+                    dc,
+                    centerX2,
+                    centerY2,
+                    outerMaxRadius2,
+                    currentSpeed2,
+                    avgSpeed2,
+                    mMaxSpeed,
+                    targetSpeed2
+                );
+
+                break;

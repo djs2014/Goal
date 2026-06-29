@@ -31,7 +31,7 @@ class GoalsView extends WatchUi.DataField {
     hidden var mProgressFields as Array<FieldType> = new Array<
         FieldType
     >[$.gMaxProgressColumns];
-    hidden var mProgressArray as Array<Float> = new Array<
+    hidden var mProgressRatios as Array<Float> = new Array<
         Float
     >[$.gMaxProgressColumns];
     hidden var mProgressColors as Array<Graphics.ColorType> = new Array<
@@ -47,6 +47,15 @@ class GoalsView extends WatchUi.DataField {
 
     function initialize() {
         DataField.initialize();
+        initializeArrays();
+    }
+
+    function initializeArrays() as Void {
+        for (var i = 0; i < $.gMaxProgressColumns; i++) {
+            mProgressFields[i] = 0;
+            mProgressRatios[i] = 0.0f;
+            mProgressColors[i] = Graphics.COLOR_BLACK;
+        }
     }
 
     hidden var mCurrentEdgeField as EdgeField = EfLarge;
@@ -97,7 +106,7 @@ class GoalsView extends WatchUi.DataField {
 
         // Remove the entries `where no field is assigned (value of 0)
         mProgressFields = $.removeZeros(mProgressFields);
-        // Add to maximum size to match mProgressArray size
+        // Add to maximum size to match mProgressRatios size
         $.ensureArraySize(mProgressFields, $.gMaxProgressColumns, 0);
         // $.logInfo(["onLayout: mProgressFields:", mProgressFields]);
     }
@@ -150,12 +159,12 @@ class GoalsView extends WatchUi.DataField {
             // Update progress values
             for (var i = 0; i < mProgressFields.size(); i++) {
                 var fieldType = mProgressFields[i];
-                mProgressArray[i] = mProgress.getProgressForField(
+                mProgressRatios[i] = mProgress.getProgressForField(
                     info,
                     fieldType
                 );
             }
-System.println("Compute: mProgressArray: " + mProgressArray);
+            // System.println("Compute: mProgressRatios: " + mProgressRatios);
 
             if (!mPaused) {
                 var cadence =
@@ -177,9 +186,9 @@ System.println("Compute: mProgressArray: " + mProgressArray);
             }
         }
 
-        var numBars = mProgressArray.size();
+        var numBars = mProgressRatios.size();
         for (var i = 0; i < numBars; i++) {
-            mProgressColors[i] = getDynamicColor(mProgressArray[i]);
+            mProgressColors[i] = getDynamicColor(mProgressRatios[i]);
         }
     }
 
@@ -214,7 +223,7 @@ System.println("Compute: mProgressArray: " + mProgressArray);
         mDemoCounter9 = (mDemoCounter9 + 10).toNumber() % 150;
         mDemoCounter10 = (mDemoCounter10 + 11).toNumber() % 150;
 
-        mProgressArray =
+        mProgressRatios =
             [
                 mDemoCounter1 / 100.0,
                 mDemoCounter2 / 100.0,
@@ -283,7 +292,7 @@ System.println("Compute: mProgressArray: " + mProgressArray);
                         barY,
                         barWidthVertical,
                         barHeightVertical,
-                        mProgressArray[i],
+                        mProgressRatios[i],
                         mProgressColors[i],
                         mProgressFields[i]
                     );
@@ -312,79 +321,481 @@ System.println("Compute: mProgressArray: " + mProgressArray);
                         barY,
                         barWidthHorizontal,
                         barHeightHorizontal,
-                        mProgressArray[i],
+                        mProgressRatios[i],
                         mProgressColors[i],
                         mProgressFields[i]
                     );
                 }
                 break;
-            case FLCircles:
-                var centerX = (screenW * 0.5).toNumber();
-                var centerY = (screenH * 0.5).toNumber();
-                var outerMaxRadius = (screenH * 0.4).toNumber();
 
-                var currentSpeed = mProgress.getProgressFieldValue(FTSpeed);
-                if (currentSpeed == null) {
-                    currentSpeed = 0.0f;
-                }
-                var avgSpeed = mProgress.getProgressFieldValue(FTAverageSpeed);
-                if (avgSpeed == null) {
-                    avgSpeed = 0.0f;
-                }
-                if (currentSpeed > mMaxSpeed) {
-                    mMaxSpeed = currentSpeed;
-                }
-                var targetSpeed = $.gTargetSpeed;
-                drawSpeedGauge(
+            case FLProportional:
+                drawProportionalGrid(
                     dc,
-                    centerX,
-                    centerY,
-                    outerMaxRadius,
-                    currentSpeed,
-                    avgSpeed,
-                    mMaxSpeed,
-                    targetSpeed
+                    1,
+                    1,
+                    dc.getWidth() - 2,
+                    dc.getHeight() - 2
+                );
+                break;
+        }
+    }
+
+    //! Render the proportional layout inside a specified bounding box
+    //! @param dc The device context
+    //! @param x Starting X coordinate of the container rectangle
+    //! @param y Starting Y coordinate of the container rectangle
+    //! @param width Total width of the container
+    //! @param height Total height of the container
+    //! @param ratios Array of Float values (0.0 to 1.0), max 10 elements
+    //! @param labels Array of Strings corresponding to each ratio
+    public function drawProportionalGrid(
+        dc as Graphics.Dc,
+        x as Number,
+        y as Number,
+        width as Number,
+        height as Number
+    ) as Void {
+        // ratios as Array<Float>,
+        // barColors as Array<Graphics.ColorType>,
+        // fieldTypes as Array<FieldType>
+        var ratios = mProgressRatios;
+        var barColors = mProgressColors;
+        var fieldTypes = mProgressFields;
+
+        var totalRatio = 0.0f;
+        var validIndices = [] as Array<Number>;
+
+        // 1. Filter out zeros and calculate total active weight
+        for (var i = 0; i < ratios.size(); i++) {
+            if (ratios[i] > 0.0) {
+                totalRatio += ratios[i];
+                validIndices.add(i);
+            }
+        }
+
+        var count = validIndices.size();
+        if (count == 0 || width <= 0 || height <= 0) {
+            var colors = getThemeColor(mDarkBackground);
+            dc.setColor(colors[:text], Graphics.COLOR_TRANSPARENT);
+            dc.drawText(
+                x + width / 2,
+                y + height / 2,
+                Graphics.FONT_TINY,
+                "No Data",
+                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER
+            );
+            return; // Nothing to draw
+        }
+
+        var currentX = x;
+        var currentY = y;
+        var remainingWidth = width;
+        var remainingHeight = height;
+        var remainingRatio = totalRatio;
+
+        var minWidth = dc.getTextWidthInPixels("888", Graphics.FONT_XTINY) + 4;
+        var minHeight = dc.getFontHeight(Graphics.FONT_XTINY) + 4;
+        var showLabels = mFieldShowLabels || mShowDetails;
+        var showValues = mFieldShowValues || mShowDetails;
+
+        // 2. Iterate and carve out segments
+        for (var i = 0; i < count; i++) {
+            var index = validIndices[i];
+            var currentWeight = ratios[index];
+            var fieldType = fieldTypes[index];
+            var label = showLabels ? getFieldLabel(fieldType) : "";
+            var color = barColors[index];
+            var valueText = showValues
+                ? getFormattedValue(
+                      mProgress.getProgressFieldValue(fieldType),
+                      fieldType
+                  )
+                : "";
+
+            // If it's the last element, consume all remaining space to avoid rounding gaps
+            if (i == count - 1) {
+                drawSegment(
+                    dc,
+                    currentX,
+                    currentY,
+                    remainingWidth,
+                    remainingHeight,
+                    label,
+                    color,
+                    valueText
+                );
+                break;
+            }
+
+            // Determine orientation dynamically based on aspect ratio to favor squares
+            if (remainingWidth >= remainingHeight) {
+                // Slice Horizontally (Columns)
+                var allocatedWidth = (
+                    (currentWeight / remainingRatio) *
+                    remainingWidth
+                ).toNumber();
+
+                // Enforce minimum width constraint
+                if (allocatedWidth < minWidth) {
+                    allocatedWidth = minWidth;
+                }
+                if (
+                    allocatedWidth >
+                    remainingWidth - (count - 1 - i) * minWidth
+                ) {
+                    allocatedWidth =
+                        remainingWidth - (count - 1 - i) * minWidth;
+                }
+
+                drawSegment(
+                    dc,
+                    currentX,
+                    currentY,
+                    allocatedWidth,
+                    remainingHeight,
+                    label,
+                    color,
+                    valueText
                 );
 
-                // drawTenColumnTargetRing(
-                //     dc,
-                //     centerX,
-                //     centerY,
-                //     outerMaxRadius,
-                //     mProgressArray
-                // );
-                // Render the hollow core numerical overlay
-                // dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-                // dc.drawText(
-                //     centerX,
-                //     centerY - 20,
-                //     Graphics.FONT_NUMBER_LARGE,
-                //     liveSpeed.format("%.0f"),
-                //     Graphics.TEXT_JUSTIFY_CENTER
-                // );
-                // dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-                // dc.drawText(
-                //     centerX,
-                //     centerY + 15,
-                //     Graphics.FONT_XTINY,
-                //     "KM/H",
-                //     Graphics.TEXT_JUSTIFY_CENTER
-                // );
-                break;
-            // case FLSpokeChart:
-            //     var centerXsc = (screenW * 0.5).toNumber();
-            //     var centerYsc = (screenH * 0.5).toNumber();
-            //     var outerMaxRadiussc = (screenH * 0.4).toNumber();
+                currentX += allocatedWidth;
+                remainingWidth -= allocatedWidth;
+            } else {
+                // Slice Vertically (Rows)
+                var allocatedHeight = (
+                    (currentWeight / remainingRatio) *
+                    remainingHeight
+                ).toNumber();
 
-            //     drawSpokeDashboard(
-            //         dc,
-            //         centerXsc,
-            //         centerYsc,
-            //         outerMaxRadiussc,
-            //         numBars,
-            //         mProgressArray
-            //     );
+                // Enforce minimum height constraint
+                if (allocatedHeight < minHeight) {
+                    allocatedHeight = minHeight;
+                }
+                if (
+                    allocatedHeight >
+                    remainingHeight - (count - 1 - i) * minHeight
+                ) {
+                    allocatedHeight =
+                        remainingHeight - (count - 1 - i) * minHeight;
+                }
+
+                drawSegment(
+                    dc,
+                    currentX,
+                    currentY,
+                    remainingWidth,
+                    allocatedHeight,
+                    label,
+                    color,
+                    valueText
+                );
+
+                currentY += allocatedHeight;
+                remainingHeight -= allocatedHeight;
+            }
+
+            remainingRatio -= currentWeight;
         }
+    }
+
+    //! Helper method to draw the single rectangle and its centered label
+    private function drawSegment(
+        dc as Graphics.Dc,
+        sx as Number,
+        sy as Number,
+        sw as Number,
+        sh as Number,
+        label as String?,
+        color as Graphics.ColorType,
+        valueText as String?
+    ) as Void {
+        // System.println(["drawSegment label:", label, "valueText:", valueText]);
+        // Draw the bounding box border
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawRectangle(sx, sy, sw, sh);
+
+        // Optional: Fill background with subtle distinction if desired
+        dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+        dc.fillRectangle(sx + 1, sy + 1, sw - 2, sh - 2);
+
+        if (
+            (label == null || label.length() == 0) &&
+            (valueText == null || valueText.length() == 0)
+        ) {
+            return; // Nothing to draw
+        }
+
+        var font = Graphics.FONT_XTINY;
+        var centerX = sx + sw / 2;
+        var centerY = sy + sh / 2;
+        var startY = centerY;
+        var textHeight = dc.getFontHeight(font);
+        if (
+            label != null &&
+            label.length() > 0 &&
+            valueText != null &&
+            valueText.length() > 0
+        ) {
+            // If 2 lines don't fit, draw only the value text
+            if (sh < textHeight * 2) {
+                label = null;
+            } else {
+                font = Graphics.FONT_XTINY;
+                var totalHeight = textHeight * 2 - 4; //dc.getFontAscent(font); // Two lines of text
+                startY = centerY - totalHeight / 2;
+            }
+        }
+
+        // Draw the text label centered inside the allocated grid square
+        if ($.isColorLight(color)) {
+            dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+        } else {
+            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        }
+
+        if (label != null && label.length() > 0) {
+            dc.drawText(
+                centerX,
+                startY,
+                font,
+                label,
+                Graphics.TEXT_JUSTIFY_CENTER
+            );
+        }
+
+        if (valueText != null && valueText.length() > 0) {
+            // System.println([
+            //     "drawSegment: valueText before truncation:",
+            //     valueText
+            // ]);
+            var widthValue = dc.getTextWidthInPixels(valueText, font);
+            if (widthValue > sw - 4) {
+                valueText = truncateUnitsOrDecimal(dc, valueText, font, sw - 4);
+            }
+            dc.drawText(
+                centerX,
+                startY + textHeight, // - dc.getFontAscent(font),
+                font,
+                valueText,
+                Graphics.TEXT_JUSTIFY_CENTER
+            );
+        }
+    }
+
+    // Helper function to truncate the value text to fit within the available width
+    function truncateUnitsOrDecimal(
+        dc as Graphics.Dc,
+        text as String?,
+        font as Graphics.FontType,
+        maxWidth as Number
+    ) as String {
+        var truncatedText = text;
+        if (truncatedText == null || truncatedText.length() == 0) {
+            return "";
+        }
+
+        // If the value text is too wide, remove the unit part (starts with a space) to fit the remaining width
+        var posSpace = truncatedText.find(" ");
+        if (posSpace == null) {
+            return ""; // No space found, return an empty string
+        }
+        truncatedText = truncatedText.substring(0, posSpace);
+
+        var widthValue = dc.getTextWidthInPixels(truncatedText, font);
+
+        // If still too wide, remove the decimal part (starts with a dot) to fit the remaining width
+        if (widthValue > maxWidth) {
+            // System.println([
+            //     "drawSegment: valueText too wide, removing decimal part:",
+            //     truncatedText,
+            // ]);
+            var posDot = truncatedText.find(".");
+            if (posDot == null) {
+                return ""; // No dot found, return an empty string
+            }
+
+            truncatedText = truncatedText.substring(0, posDot);
+        }
+
+        return truncatedText;
+    }
+    //}
+
+    // Inside your View class...
+    function drawRadialGauges(dc) {
+        var centerX = dc.getWidth() / 2;
+        var centerY = dc.getHeight() / 2;
+
+        // 1. Define your array of ratios (e.g., 5 metrics)
+        // var ratios = [0.85, 0.42, 1.0, 0.15, 0.67];
+        var ratios = mProgressRatios; // Use the actual progress values from mProgressRatios
+        var numMetrics = ratios.size();
+
+        // 2. Center hub styling
+        var hubRadius = 15;
+        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(centerX, centerY, hubRadius);
+
+        // 3. Spacing setup
+        var baseRadius = hubRadius + 12; // Start just outside the hub
+        var ringSpacing = 16; // Distance between each arc layer
+        var dotRadius = 4; // Size of the indicator circle at the end
+
+        // Define the sweep direction (e.g., from 180° clockwise to 0°)
+        var startAngleDeg = 180;
+        var maxSweepDeg = 180; // A half-circle gauge. Change to 360 for full circles.
+
+        for (var i = 0; i < numMetrics; i++) {
+            var colorRatio = mProgressColors[i]; // Use the color corresponding to this metric
+            var ratio = ratios[i];
+
+            // Ensure ratio stays within bounds
+            if (ratio > 1.0) {
+                ratio = 1.0;
+            }
+            if (ratio < 0.0) {
+                ratio = 0.0;
+            }
+
+            // Calculate the unique radius for this specific layer
+            var currentRadius = baseRadius + i * ringSpacing;
+
+            // Calculate the end angle in degrees for dc.drawArc
+            // Because Garmin arcs go counter-clockwise, subtracting the sweep
+            // makes the arc grow clockwise from the left (180°).
+            var endAngleDeg = startAngleDeg - ratio * maxSweepDeg;
+
+            // --- Step A: Draw the Arc ---
+            dc.setPenWidth(2); // Adjust thickness as needed
+            dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+            // Optional: Draw a faint background track for context
+            dc.drawArc(
+                centerX,
+                centerY,
+                currentRadius,
+                Graphics.ARC_CLOCKWISE,
+                startAngleDeg,
+                startAngleDeg - maxSweepDeg
+            );
+
+            dc.setPenWidth(4); // Adjust thickness as needed
+            dc.setColor(colorRatio, Graphics.COLOR_TRANSPARENT); // Use the color corresponding to this metric
+            if (ratio > 0) {
+                dc.drawArc(
+                    centerX,
+                    centerY,
+                    currentRadius,
+                    Graphics.ARC_CLOCKWISE,
+                    startAngleDeg,
+                    endAngleDeg
+                );
+            }
+            dc.setPenWidth(1); // Reset pen width to default
+
+            // --- Step B: Calculate and Draw the Terminal Dot ---
+            // Convert the final degree angle to Radians for standard Math functions
+            var angleRad = endAngleDeg * (Math.PI / 180.0);
+
+            // Calculate X and Y offsets (negating Y because screen coordinates go down)
+            var dotX = centerX + currentRadius * Math.cos(angleRad);
+            var dotY = centerY - currentRadius * Math.sin(angleRad);
+
+            // Draw the small circle at the end of the arc
+            dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+            dc.fillCircle(dotX.toNumber(), dotY.toNumber(), dotRadius);
+        }
+    }
+
+    function drawTriangleGauges(dc) {
+        var width = dc.getWidth();
+        var height = dc.getHeight();
+        var centerX = width / 2;
+        var centerY = height / 2;
+
+        // 1. Setup your metrics (0.0 to 1.0)
+        // var ratios = [0.8, 0.5, 0.9, 0.3, 0.7, 0.4, 1.0, 0.2, 0.6, 0.95];
+        var ratios = mProgressRatios; // Use the actual progress values from mProgressRatios
+        var numMetrics = ratios.size();
+
+        System.println(["drawTriangleGauges: ratios:", ratios]);
+        // Calculate the angular width of each slice (in Radians)
+        var angleStep = (2 * Math.PI) / numMetrics;
+
+        // 2. Loop through each metric segment
+        for (var i = 0; i < numMetrics; i++) {
+            var colorRatio = mProgressColors[i]; // Use the color corresponding to this metric
+            var ratio = ratios[i];
+
+            // Target angles for the boundaries of this specific slice
+            var startAngle = i * angleStep;
+            var endAngle = (i + 1) * angleStep;
+
+            // 3. Find the maximum rectangular boundary distance for both angles
+            // This scales the circular distribution into a perfect outer rectangle.
+            var maxRadiusStart = getRectRadius(startAngle, width, height);
+            var maxRadiusEnd = getRectRadius(endAngle, width, height);
+
+            // Scale the radius dynamically by the metric's ratio
+            var currentRadiusStart = maxRadiusStart * ratio;
+            var currentRadiusEnd = maxRadiusEnd * ratio;
+
+            // 4. Calculate the two outer vertex points of the triangle
+            var pt1X = centerX + currentRadiusStart * Math.cos(startAngle);
+            var pt1Y = centerY - currentRadiusStart * Math.sin(startAngle); // Negate Y
+
+            var pt2X = centerX + currentRadiusEnd * Math.cos(endAngle);
+            var pt2Y = centerY - currentRadiusEnd * Math.sin(endAngle); // Negate Y
+
+            // 5. Draw the metric triangle
+            // Vertex 0 is always the center hub (centerX, centerY)
+            dc.setColor(colorRatio, Graphics.COLOR_TRANSPARENT);
+            dc.fillPolygon([
+                [centerX, centerY],
+                [pt1X.toNumber(), pt1Y.toNumber()],
+                [pt2X.toNumber(), pt2Y.toNumber()],
+            ]);
+
+            // Optional: Draw a thin wireframe border around the slices for definition
+            dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+            dc.drawLine(centerX, centerY, pt1X.toNumber(), pt1Y.toNumber());
+            dc.drawLine(
+                pt1X.toNumber(),
+                pt1Y.toNumber(),
+                pt2X.toNumber(),
+                pt2Y.toNumber()
+            );
+        }
+    }
+
+    // --- Helper: Intersection of an angle with a bounding rectangle ---
+    // This projects a circle outward until it flush-fits a rectangle
+    function getRectRadius(angle, w, h) {
+        var absCos = Math.cos(angle).abs();
+        var absSin = Math.sin(angle).abs();
+
+        // Determine if the ray hits the top/bottom or left/right walls first
+        if ((w / 2.0) * absSin <= (h / 2.0) * absCos) {
+            return w / 2.0 / absCos;
+        } else {
+            return h / 2.0 / absSin;
+        }
+    }
+
+    // --- Helper: Cycle colors for visual distinction ---
+    function getMetricColor(index) {
+        var colors = [
+            Graphics.COLOR_RED,
+            Graphics.COLOR_BLUE,
+            Graphics.COLOR_GREEN,
+            Graphics.COLOR_YELLOW,
+            Graphics.COLOR_ORANGE,
+            Graphics.COLOR_PURPLE,
+            Graphics.COLOR_PINK,
+            Graphics.COLOR_DK_GREEN,
+            Graphics.COLOR_LT_GRAY,
+            Graphics.COLOR_DK_BLUE,
+        ];
+        return colors[index % colors.size()];
     }
 
     function getDynamicColor(progress as Float?) as Graphics.ColorType {
@@ -616,6 +1027,7 @@ System.println("Compute: mProgressArray: " + mProgressArray);
         }
     }
 
+    hidden var mMaxPower as Float = 0.0f; // Store the maximum power value for the power gauge
     hidden var mMaxSpeed as Float = 0.0f; // Store the maximum speed value for the speed gauge
 
     hidden function drawHorizontalProgressBar(
@@ -812,6 +1224,8 @@ System.println("Compute: mProgressArray: " + mProgressArray);
         } // mFieldShowLabels || mShowDetails)
     }
 
+    hidden var rad2degFactor as Float = 180 / Math.PI; // Conversion factor from radians to degrees
+
     // Parameters:
     // dc - The device context
     // cx, cy - Center coordinates of the gauge
@@ -824,7 +1238,7 @@ System.println("Compute: mProgressArray: " + mProgressArray);
         dc,
         cx,
         cy,
-        r,
+        baseRadius,
         currentSpeed,
         avgSpeed,
         maxSpeed,
@@ -832,84 +1246,137 @@ System.println("Compute: mProgressArray: " + mProgressArray);
     ) {
         if (targetSpeed == null || targetSpeed <= 0) {
             targetSpeed = 1.0;
-        } // Prevent division by zero
+        }
 
+        // --- Dynamic Radius Scaling ---
+        var currentRadius = baseRadius;
+        var percentage = currentSpeed / targetSpeed;
+
+        if (percentage > 1.0) {
+            // Calculate how far past the target they are (e.g., 1.08 means 8% over)
+            var excessPercentage = percentage - 1.0;
+
+            // Scale factor: grows the radius by 50% of the excess percentage.
+            // (An 8% over-speed will grow the radius by 4%)
+            var scaleFactor = 1.0 + excessPercentage * 0.5;
+
+            currentRadius = baseRadius * scaleFactor;
+        }
+
+        System.println(
+            "drawSpeedGauge: currentSpeed=" +
+                currentSpeed +
+                ", avgSpeed=" +
+                avgSpeed +
+                ", maxSpeed=" +
+                maxSpeed +
+                ", targetSpeed=" +
+                targetSpeed
+        );
         // 1. Draw the base semi-circle (from 180 degrees to 0 degrees)
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.setPenWidth(3);
+        dc.setPenWidth(1);
         // Draw arc: cx, cy, radius, graphics_arc_direction, start_angle, end_angle
         // In Connect IQ, 0deg is right, 90deg is top. We draw from left (180) to right (0) clockwise.
-        dc.drawArc(cx, cy, r, Graphics.ARC_CLOCKWISE, 180, 0);
+        dc.drawArc(cx, cy, currentRadius, Graphics.ARC_CLOCKWISE, 180, 0);
 
-        // 2. Draw MAXIMUM Speed Indication (A small tick mark or dot)
-        var maxAngle = speedToAngle(maxSpeed, targetSpeed);
-        var maxStartX = cx + (r - 5) * Math.cos(maxAngle);
-        var maxStartY = cy - (r - 5) * Math.sin(maxAngle);
-        var maxEndX = cx + (r + 5) * Math.cos(maxAngle);
-        var maxEndY = cy - (r + 5) * Math.sin(maxAngle);
-        dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_TRANSPARENT);
-        dc.setPenWidth(3);
-        dc.drawLine(maxStartX, maxStartY, maxEndX, maxEndY);
+        // Draw AVERAGE Speed Indication
+        if (avgSpeed > 0) {
+            drawAverageArc(dc, cx, cy, currentRadius, avgSpeed, targetSpeed);
+        }
+        // Draw MAXIMUM Speed Indication (A small tick mark or dot)
+        if (maxSpeed > 0) {
+            drawMaxSpeedIndicator(
+                dc,
+                cx,
+                cy,
+                currentRadius,
+                maxSpeed,
+                targetSpeed
+            );
+        }
 
-        // 3. Draw AVERAGE Speed Indication (A triangle pointing at the circle)
-        var avgAngle = speedToAngle(avgSpeed, targetSpeed);
-        // // Tip of the triangle on the circle
-        // var tipX = cx + r * Math.cos(avgAngle);
-        // var tipY = cy - r * Math.sin(avgAngle);
-        // // Base of the triangle (slightly outside the circle)
-        // var baseDist = r + 8;
-        // var baseX = cx + baseDist * Math.cos(avgAngle);
-        // var baseY = cy - baseDist * Math.sin(avgAngle);
-        // // Left and right corners of the triangle base
-        // var spread = 0.08; // How wide the triangle base is in radians
-        // var corner1X = cx + baseDist * Math.cos(avgAngle - spread);
-        // var corner1Y = cy - baseDist * Math.sin(avgAngle - spread);
-        // var corner2X = cx + baseDist * Math.cos(avgAngle + spread);
-        // var corner2Y = cy - baseDist * Math.sin(avgAngle + spread);
+        // Draw CURRENT Speed (Arrow/line from center to circle)
+        var curDegrees = speedToDegrees(currentSpeed, targetSpeed);
 
-        // dc.setColor(Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
-        // dc.fillPolygon([
-        //     [tipX, tipY],
-        //     [corner1X, corner1Y],
-        //     [corner2X, corner2Y],
-        // ]);
-
-        dc.setPenWidth(3);
+        dc.setPenWidth(10);
+        dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
         dc.drawArc(
             cx,
             cy,
-            r,
+            currentRadius - 10,
             Graphics.ARC_CLOCKWISE,
             180,
-            avgAngle * (180 / Math.PI)
+            curDegrees
         ); // Convert radians to degrees for drawArc
 
-        // 4. Draw CURRENT Speed (Arrow/line from center to circle)
-        var curAngle = speedToAngle(currentSpeed, targetSpeed);
-        var pointerEndX = cx + (r - 3) * Math.cos(curAngle);
-        var pointerEndY = cy - (r - 3) * Math.sin(curAngle);
-
+        var curPoint = point2DOnCircle(cx, cy, currentRadius, curDegrees);
+        var curLeft = point2DOnCircle(
+            cx,
+            cy,
+            currentRadius * 0.9,
+            curDegrees - 2
+        );
+        var curRight = point2DOnCircle(
+            cx,
+            cy,
+            currentRadius * 0.9,
+            curDegrees + 2
+        );
+        var centerPoint = [cx, cy];
         dc.setColor(Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
-        dc.setPenWidth(4);
-        dc.drawLine(cx, cy, pointerEndX, pointerEndY);
+        dc.setPenWidth(1);
+        dc.fillPolygon([centerPoint, curLeft, curPoint, curRight]);
+        //dc.drawLine(cx, cy, curPoint[0], curPoint[1]);
 
         // Optional: Draw a small center hub to clean up the line origin
         dc.fillCircle(cx, cy, 5);
     }
 
-    // --- Helper to convert speed to angles (in Radians for Math.sin/cos) ---
-    // 0 speed = 180 deg (PI rad)
-    // Target speed = 0 deg (0 rad)
-    function speedToAngle(speed, target) {
+    // keep in mind that Garmin's drawing system natively uses degrees, but its 0° starts at the 3 o'clock position (pointing right)
+    // and goes counter-clockwise. Since your code maps 180° down to 0°, your gauge will correctly sweep clockwise from the left side to the right side!
+    // --- Helper to convert speed to angles (in Degrees) ---
+    // 0 speed = 180 deg
+    // Target speed = 0 deg
+    function speedToDegrees(speed, target) {
+        if (target == null || target <= 0) {
+            target = 1.0;
+        }
         var percentage = speed / target;
         if (percentage > 1.1) {
             percentage = 1.1;
         } // Cap slightly past target so it doesn't spin infinitely
-        if (percentage < 0) {
+        else if (percentage < 0) {
             percentage = 0;
         }
-        // Map 0->1 to PI->0 radians (Clockwise)
-        return Math.PI - percentage * Math.PI;
+
+        // Map 0 -> 1 to 180 -> 0 degrees (Clockwise)
+        return 180.0 - percentage * 180.0;
+    }
+
+    function drawMaxSpeedIndicator(dc, cx, cy, r, maxSpeed, targetSpeed) {
+        var maxDegrees = speedToDegrees(maxSpeed, targetSpeed);
+        var maxPoint = point2DOnCircle(cx, cy, r, maxDegrees);
+        dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(maxPoint[0], maxPoint[1], 5);
+    }
+
+    function drawAverageArc(dc, cx, cy, r, avgSpeed, targetSpeed) {
+        var avgDegrees = speedToDegrees(avgSpeed, targetSpeed);
+
+        dc.setPenWidth(20);
+        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.drawArc(cx, cy, r - 20, Graphics.ARC_CLOCKWISE, 180, avgDegrees); // Convert radians to degrees for drawArc
+        // dc.setPenWidth(18);
+        // dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        // dc.drawArc(
+        //     cx,
+        //     cy,
+        //     r - 20,
+        //     Graphics.ARC_CLOCKWISE,
+        //     180,
+        //     avgAngle * rad2degFactor
+        // );
     }
 
     function drawTenColumnTargetRing(
@@ -1082,7 +1549,7 @@ System.println("Compute: mProgressArray: " + mProgressArray);
                 return value.format("%.0f") + " W"; // Power is already in watts
             case FTSpeed:
             case FTAverageSpeed:
-                return (value * 3.6f).format("%.1f") + " KM/H"; // Convert m/s to km/h
+                return value.format("%.1f") + " KM/H";
             case FTAverageCadence:
             case FTCadence:
                 return value.format("%.0f") + " RPM"; // Cadence is already in rpm
@@ -1128,8 +1595,9 @@ System.println("Compute: mProgressArray: " + mProgressArray);
         var sin = SIN_TABLE[angleInt] as Float;
         var cos = COS_TABLE[angleInt] as Float;
 
-        var xP = radius.toFloat() * cos + x;
-        var yP = radius.toFloat() * sin + y;
+        var xP = x + radius.toFloat() * cos;
+        // In computer graphics, the Y-axis is inverted (increasing Y goes down), so we subtract the sine component
+        var yP = y - radius.toFloat() * sin;
 
         return [xP.toNumber(), yP.toNumber()] as Point2D;
     }
@@ -1271,6 +1739,9 @@ System.println("Compute: mProgressArray: " + mProgressArray);
             :borderAttention => darkBackground
                 ? COLOR_ALABASTER
                 : COLOR_ELECTRIC_BLUE,
+            :text => darkBackground
+                ? Graphics.COLOR_WHITE
+                : Graphics.COLOR_BLACK,
         };
     }
 }

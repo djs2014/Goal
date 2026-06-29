@@ -69,7 +69,7 @@ class GoalsApp extends Application.AppBase {
                 Storage.setValue(
                     "show_large_field",
                     [
-                        FLVertical, // layout
+                        FLProportional, // layout
                         false, // show labels
                         false, // show values
                         8, // gap
@@ -105,7 +105,7 @@ class GoalsApp extends Application.AppBase {
                 Storage.setValue(
                     "show_small_field",
                     [
-                        FLVertical, // layout
+                        FLProportional, // layout
                         false, // show labels
                         false, // show values
                         1, // gap
@@ -127,23 +127,6 @@ class GoalsApp extends Application.AppBase {
                 Storage.setValue("preset_suffer_factor", 1.0); // calories
                 $.applyPreset("preset_casual"); 
 
-                // Storage.setValue("target_distance", 150); // km
-                // Storage.setValue("target_duration", 300); // minutes
-                // Storage.setValue("target_calories", 2000); // calories
-                // Storage.setValue("target_training_stress_score", 150); // TSS
-                // Storage.setValue("target_average_power", 200); // watts
-                // Storage.setValue("target_average_speed", 28); // km/h
-                // Storage.setValue("target_average_cadence", 90); // rpm
-                // Storage.setValue("target_average_heart_rate_zone", 2); // zone
-                // Storage.setValue("target_normalized_power", 230); // watts
-                // Storage.setValue("target_intensity_factor", 0.9); // IF
-                // Storage.setValue("target_power", 0); // watts
-                // Storage.setValue("target_speed", 30); // km/h
-                // Storage.setValue("target_cadence", 90); // rpm
-                // Storage.setValue("target_heart_rate_zone", 2.0f); // zone
-                // Storage.setValue("target_total_ascent", 500); // meters
-                // Storage.setValue("target_total_descent", 500); // meters
-                
                 Storage.setValue("alert_calories_window", 700); // calories loop
                 Storage.setValue("alert_calories_sound", false); // sound
                 Storage.setValue("alert_timeelapsed_window", 0); // minutes

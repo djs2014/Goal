@@ -744,9 +744,14 @@ function getFieldLayoutAsString(fieldLayout as FieldLayout) as String {
       return "Vertical";
     case FLHorizontal:
       return "Horizontal";
-    case FLCircles:
-      return "Circles";
-    
+    case FLProportional:
+      return "Proportional";
+    case FLCircle:
+      return "Circle";
+    case FL2Circles:
+      return "2 Circles";
+    case FLRadialGauge:
+      return "Radial Gauge";
     default:
       return "unknown";
   }

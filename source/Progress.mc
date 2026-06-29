@@ -115,18 +115,15 @@ class Progress {
                     return 0.0f;
                 }
                 return (
-                    ((getValueForField(info, fieldType) as Float) *
-                        3.6) /
+                    (getValueForField(info, fieldType) as Float) /
                     $.gTargetSpeed.toFloat()
                 );
             case FTAverageSpeed:
                 if ($.gTargetAverageSpeed == 0) {
                     return 0.0f;
                 }
-                // convert meters/second to km/h by multiplying by 3.6
                 return (
-                    ((getValueForField(info, fieldType) as Float) *
-                        3.6) /
+                    (getValueForField(info, fieldType) as Float) /
                     $.gTargetAverageSpeed.toFloat()
                 );
             case FTAverageCadence:
@@ -459,10 +456,19 @@ class Progress {
                 }
                 return mCachedAveragePower;
             case FTSpeed:
-                return $.getActivityValue(info, :currentSpeed, 0) as Float;
+                return ($.getActivityValue(info, :currentSpeed, 0) as Float) * 3.6f; // convert meters/second to km/h
             case FTAverageSpeed:
+                // var aSpeed =
+                //     ($.getActivityValue(info, :averageSpeed, 0) as Float);
+                // var aSpeedKMH = aSpeed * 3.6f; // convert meters/second to km/h
+                // System.println([
+                //     "getValueForField FTAverageSpeed aSpeed:",
+                //     aSpeed,
+                //     "aSpeedKMH:",
+                //     aSpeedKMH,
+                // ]);
                 var avgSpeed =
-                    $.getActivityValue(info, :averageSpeed, 0) as Float;
+                    ($.getActivityValue(info, :averageSpeed, 0) as Float) * 3.6f; // convert meters/second to km/h
                 if (avgSpeed > 0) {
                     mCachedAverageSpeed = avgSpeed;
                 }
