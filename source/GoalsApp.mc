@@ -44,6 +44,9 @@ class GoalsApp extends Application.AppBase {
                 // Storage.setValue("show_labels", false);
                 Storage.setValue("demo", false);
                 Storage.setValue("cadence_counter", 3);
+                Storage.setValue("power_per_seconds", 3);
+                Storage.setValue("hsp_darklight_breakpoint", 127.5);
+                Storage.setValue("hsp_showvalue", false);
 
                 Storage.setValue(
                     "show_one_field",
@@ -174,6 +177,18 @@ class GoalsApp extends Application.AppBase {
             $.gCadenceCounter =
                 $.getStorageValue("cadence_counter", $.gCadenceCounter) as
                 Number;
+            
+            var powerPerSeconds =
+                $.getStorageValue("power_per_seconds", $.gPowerPerSec) as
+                Number;
+            $.gPowerPerSec.setPowerPerSec(powerPerSeconds);
+
+            $.gHspDarklightBreakpoint =
+                $.getStorageValue("hsp_darklight_breakpoint", $.gHspDarklightBreakpoint) as
+                Float;
+            $.gHspShowValue =
+                $.getStorageValue("hsp_showvalue", $.gHspShowValue) as
+                Boolean;
 
             $.gTargetDistance =
                 $.getStorageValue("target_distance", $.gTargetDistance) as
@@ -272,6 +287,7 @@ function getApp() as GoalsApp {
 }
 
 var gHeartRate = new HeartRate();
+var gPowerPerSec = new PowerPerSec();
 
 // +5 for the layout and other settings
 var gPreambleFieldCount as Number = 5;
@@ -280,6 +296,8 @@ var gShowFieldsArraySize as Number =
 
 var gDemo as Boolean = false;
 var gCadenceCounter as Number = 3;
+var gHspShowValue as Boolean = false;
+
 
 // Target values for progress calculations
 var gTargetDistance as Number = 150;

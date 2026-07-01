@@ -1,7 +1,7 @@
 drawProportionalGrid
-- if all 0 -> draw all even
- - label on/off/automatic
-
+3 sec power
+portrait segment unit onder value
+landscape als nu 
 
 
 always calc all fields 

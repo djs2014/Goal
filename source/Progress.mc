@@ -447,7 +447,9 @@ class Progress {
                     $.getActivityValue(info, :currentHeartRate, 0) as Number
                 );
             case FTPower:
-                return $.getActivityValue(info, :currentPower, 0) as Number;
+                // Use the PowerPerSec class to get a smoothed power value over the last N seconds, where N is configurable by the user
+                return $.gPowerPerSec.getLastComputedPower();
+                // return $.getActivityValue(info, :currentPower, 0) as Number;
             case FTAveragePower:
                 var avgPower =
                     $.getActivityValue(info, :averagePower, 0) as Number;

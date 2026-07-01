@@ -46,6 +46,15 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       var mi;
 
       mi = new WatchUi.MenuItem(
+        "Power per|1~60(seconds)",
+        null,
+        "power_per_seconds",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      advMenu.addItem(mi);
+
+      mi = new WatchUi.MenuItem(
         "Cadence counter|0~5(seconds)",
         null,
         "cadence_counter",
@@ -55,22 +64,26 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       advMenu.addItem(mi);
 
       mi = new WatchUi.MenuItem(
-        "Gap columns horizontal|0-20(pixels)",
+        "HSP breakpoint|0-255.0(HSP)",
         null,
-        "gap_columns_horizontal",
+        "hsp_darklight_breakpoint",
         null
       );
-      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      mi.setSubLabel($.getStorageFloatAsString(mi.getId() as String));
       advMenu.addItem(mi);
 
-      mi = new WatchUi.MenuItem(
-        "Gap columns vertical|0-20(pixels)",
-        null,
-        "gap_columns_vertical",
-        null
+      var boolean = false;
+
+      boolean = Storage.getValue("hsp_showvalue") ? true : false;
+      advMenu.addItem(
+        new WatchUi.ToggleMenuItem(
+          "Show HSP value",
+          null,
+          "hsp_showvalue",
+          boolean,
+          null
+        )
       );
-      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
-      advMenu.addItem(mi);
 
       WatchUi.pushView(advMenu, new $.GeneralMenuDelegate(), WatchUi.SLIDE_UP);
       return;
@@ -172,8 +185,12 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         "target_duration",
         null
       );
-      mi.setSubLabel($.getStorageNumberAsHHMM(mi.getId() as String) + " (" +
-      $.getStorageNumberAsString(mi.getId() as String) + " min)");
+      mi.setSubLabel(
+        $.getStorageNumberAsHHMM(mi.getId() as String) +
+          " (" +
+          $.getStorageNumberAsString(mi.getId() as String) +
+          " min)"
+      );
       targetMenu.addItem(mi);
 
       mi = new WatchUi.MenuItem(

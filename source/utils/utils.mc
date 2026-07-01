@@ -152,7 +152,9 @@ function getMaxCharactersThatFit(
     return text.length();
 }
 
+var gHspDarklightBreakpoint as Float = 127.5;
 // Returns true if the color is light (needs black text), false if dark (needs white text)
+// HSP 0 is darkest (black), 255 is lightest (white). The threshold is set at 127.5 by default, but can be adjusted via settings.
 function isColorLight(garminColor as Graphics.ColorType) as Boolean {
     // 1. Bit-shift to extract RGB channels
     var r = (garminColor >> 16) & 0xff;
@@ -168,5 +170,48 @@ function isColorLight(garminColor as Graphics.ColorType) as Boolean {
     var hsp = Math.sqrt(0.299 * rSq + 0.587 * gSq + 0.114 * bSq);
 
     // 4. Return true if light, false if dark
-    return hsp > 127.5;
+    // 127.5 is the midpoint of the 0-255 range, which is a common threshold for determining light vs dark colors
+    if ($.gHspDarklightBreakpoint == null || $.gHspDarklightBreakpoint < 0 || $.gHspDarklightBreakpoint > 255) {
+        $.gHspDarklightBreakpoint = 127.5; // Default to midpoint if not set
+    }
+    return hsp > $.gHspDarklightBreakpoint;
+}
+
+function calculateHSP(garminColor as Graphics.ColorType) as Float {
+    // 1. Bit-shift to extract RGB channels
+    var r = (garminColor >> 16) & 0xff;
+    var g = (garminColor >> 8) & 0xff;
+    var b = garminColor & 0xff;
+
+    // 2. Square the channels to match your HSP formula
+    var rSq = (r * r).toFloat();
+    var gSq = (g * g).toFloat();
+    var bSq = (b * b).toFloat();
+
+    // 3. Apply standard perceptual weights
+    return Math.sqrt(0.299 * rSq + 0.587 * gSq + 0.114 * bSq);
+}
+
+function getMatchingFont(
+  dc as Dc,
+  fontList as Array<FontType>,
+  maxWidth as Number,
+  maxHeight as Number,
+  text as String
+) as FontType {
+  var index = fontList.size() - 1;
+  var font = fontList[index] as FontType;
+  // System.println(Lang.format("text[$1$] max w[$2$]h[$3$]",[text, maxWidth, maxHeight]));
+  // wxh
+  var dimensions = dc.getTextDimensions(text, font);
+  // System.println(Lang.format(" dim w[$1$]h[$2$]",dimensions));
+  // while height or width of font too big, find another font
+  while ((dimensions[0] > maxWidth || dimensions[1] > maxHeight) && index > 0) {
+    index = index - 1;
+    font = fontList[index] as FontType;
+    dimensions = dc.getTextDimensions(text, font);
+    // System.println(Lang.format(" dim w[$1$]h[$2$]",dimensions));
+  }
+  // System.println("font index: " + index);
+  return font;
 }

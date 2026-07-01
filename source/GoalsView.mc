@@ -45,6 +45,14 @@ class GoalsView extends WatchUi.DataField {
     hidden var mNormPowerEngine as NormPowerEngine = new NormPowerEngine();
     hidden var mHasCourseNavigation as Boolean = false;
 
+    hidden var mFonts as Array = [
+        Graphics.FONT_XTINY,
+        Graphics.FONT_TINY,
+        Graphics.FONT_SYSTEM_SMALL,
+        Graphics.FONT_SYSTEM_MEDIUM,
+        Graphics.FONT_SYSTEM_LARGE,
+    ];
+
     function initialize() {
         DataField.initialize();
         initializeArrays();
@@ -63,7 +71,7 @@ class GoalsView extends WatchUi.DataField {
     hidden var mFieldShowValues as Boolean = false;
     hidden var mFieldColumnGap as Number = 8;
     hidden var mFieldDivider as Number = 80;
-
+    
     function onLayout(dc as Graphics.Dc) as Void {
         mCurrentEdgeField = $.getEdgeField(dc);
 
@@ -147,6 +155,7 @@ class GoalsView extends WatchUi.DataField {
             mDemoStartTime = 0; // reset demo time so it starts from the beginning when toggled on
             $.gDemo = false; // reset demo flag so it doesn't keep simulating when paused
 
+            $.gPowerPerSec.compute(info);
             var power = $.getActivityValue(info, :currentPower, 0) as Number;
             var np = mNormPowerEngine.compute(power);
             mProgress.setNormalizedPower(np);
@@ -362,6 +371,9 @@ class GoalsView extends WatchUi.DataField {
         var barColors = mProgressColors;
         var fieldTypes = mProgressFields;
 
+        // TODO: if all ratios are between .9 and 1.0, then ..
+        //ratios = [2.99f, 0.93f, 0.92f, 0.93f, 0.98f, 0.91f];
+
         var totalRatio = 0.0f;
         var validIndices = [] as Array<Number>;
 
@@ -408,7 +420,8 @@ class GoalsView extends WatchUi.DataField {
             var valueText = showValues
                 ? getFormattedValue(
                       mProgress.getProgressFieldValue(fieldType),
-                      fieldType
+                      fieldType,
+                      true
                   )
                 : "";
 
@@ -509,12 +522,9 @@ class GoalsView extends WatchUi.DataField {
         color as Graphics.ColorType,
         valueText as String?
     ) as Void {
-        // System.println(["drawSegment label:", label, "valueText:", valueText]);
         // Draw the bounding box border
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         dc.drawRectangle(sx, sy, sw, sh);
-
-        // Optional: Fill background with subtle distinction if desired
         dc.setColor(color, Graphics.COLOR_TRANSPARENT);
         dc.fillRectangle(sx + 1, sy + 1, sw - 2, sh - 2);
 
@@ -525,32 +535,63 @@ class GoalsView extends WatchUi.DataField {
             return; // Nothing to draw
         }
 
-        var font = Graphics.FONT_XTINY;
-        var centerX = sx + sw / 2;
-        var centerY = sy + sh / 2;
-        var startY = centerY;
-        var textHeight = dc.getFontHeight(font);
-        if (
-            label != null &&
-            label.length() > 0 &&
-            valueText != null &&
-            valueText.length() > 0
-        ) {
-            // If 2 lines don't fit, draw only the value text
-            if (sh < textHeight * 2) {
-                label = null;
-            } else {
-                font = Graphics.FONT_XTINY;
-                var totalHeight = textHeight * 2 - 4; //dc.getFontAscent(font); // Two lines of text
-                startY = centerY - totalHeight / 2;
-            }
-        }
-
-        // Draw the text label centered inside the allocated grid square
         if ($.isColorLight(color)) {
             dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
         } else {
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        }
+        if ($.gHspShowValue) {
+            var hsp = $.calculateHSP(color);
+            dc.drawText(
+                sx + sw - 2,
+                sy + 2,
+                Graphics.FONT_XTINY,
+                hsp.format("%.1f"),
+                Graphics.TEXT_JUSTIFY_RIGHT
+            );            
+        }
+
+        // Draw the text label centered inside the allocated grid square
+        var font = Graphics.FONT_XTINY;
+        var centerX = sx + sw / 2;
+        var centerY = sy + sh / 2;
+        var startY = centerY;
+
+        if (valueText == null || valueText.length() == 0) {
+            // Only label
+            dc.drawText(
+                centerX,
+                startY,
+                font,
+                label,
+                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER
+            );
+            return;
+        }
+
+        // label and valueText
+        var labelHeight = 0;
+        font = Graphics.FONT_XTINY;
+        if (label != null && label.length() > 0) {
+            labelHeight = dc.getFontHeight(font);
+        }
+
+        var fontValue =
+            $.getMatchingFont(
+                dc,
+                mFonts,
+                sw - 4,
+                sh - 4 - labelHeight,
+                valueText
+            ) as Graphics.FontType;
+        var valueHeight = dc.getFontHeight(fontValue);
+
+        // If 2 lines won't fit, draw only the value text
+        if (sh < labelHeight + valueHeight) {
+            label = null;
+        } else {
+            var totalHeight = labelHeight + valueHeight - 4; //dc.getFontAscent(font); // Two lines of text
+            startY = centerY - totalHeight / 2;
         }
 
         if (label != null && label.length() > 0) {
@@ -563,27 +604,61 @@ class GoalsView extends WatchUi.DataField {
             );
         }
 
-        if (valueText != null && valueText.length() > 0) {
-            // System.println([
-            //     "drawSegment: valueText before truncation:",
-            //     valueText
-            // ]);
-            var widthValue = dc.getTextWidthInPixels(valueText, font);
-            if (widthValue > sw - 4) {
-                valueText = truncateUnitsOrDecimal(dc, valueText, font, sw - 4);
+        if (valueText.length() > 0) {
+            // number<space>units
+            var widthUnits = 0;
+            var units = "";
+            var unitHeight = 0;
+            var valueOnly = valueText;
+            var posSpace = valueText.find(" ");
+            if (posSpace != null) {
+                font = Graphics.FONT_XTINY;
+                valueOnly = valueText.substring(0, posSpace);
+                units = valueText.substring(posSpace, null);
+                widthUnits = dc.getTextWidthInPixels(units, font);
+                unitHeight = dc.getFontHeight(font);
             }
+
+            var widthValue = dc.getTextWidthInPixels(valueOnly, fontValue);
+            // value and units exceed width -> remove units.
+            if (widthValue + widthUnits > sw - 4) {
+                widthUnits = 0;
+                units = "";
+
+                // Truncate the value text to fit within the available width
+                valueOnly = truncateDecimals(dc, valueOnly, fontValue, sw - 4);
+                widthValue = dc.getTextWidthInPixels(valueOnly, fontValue);
+            }
+            // Draw value + units centered horizontally
+            var totalWidth = widthValue + widthUnits;
+            var startX = centerX - totalWidth / 2;
             dc.drawText(
-                centerX,
-                startY + textHeight, // - dc.getFontAscent(font),
-                font,
-                valueText,
-                Graphics.TEXT_JUSTIFY_CENTER
+                startX,
+                startY + labelHeight,
+                fontValue,
+                valueOnly,
+                Graphics.TEXT_JUSTIFY_LEFT
             );
+            if (widthUnits > 0) {
+                
+                dc.drawText(
+                    startX + widthValue,
+                    startY +
+                        labelHeight + // label and unit same fonts 
+                        valueHeight -       
+                        unitHeight - 
+                        dc.getFontDescent(fontValue) +
+                        dc.getFontDescent(font),
+                    font,
+                    units,
+                    Graphics.TEXT_JUSTIFY_LEFT
+                );
+            }
         }
     }
 
     // Helper function to truncate the value text to fit within the available width
-    function truncateUnitsOrDecimal(
+    function truncateDecimals(
         dc as Graphics.Dc,
         text as String?,
         font as Graphics.FontType,
@@ -594,21 +669,8 @@ class GoalsView extends WatchUi.DataField {
             return "";
         }
 
-        // If the value text is too wide, remove the unit part (starts with a space) to fit the remaining width
-        var posSpace = truncatedText.find(" ");
-        if (posSpace == null) {
-            return ""; // No space found, return an empty string
-        }
-        truncatedText = truncatedText.substring(0, posSpace);
-
         var widthValue = dc.getTextWidthInPixels(truncatedText, font);
-
-        // If still too wide, remove the decimal part (starts with a dot) to fit the remaining width
         if (widthValue > maxWidth) {
-            // System.println([
-            //     "drawSegment: valueText too wide, removing decimal part:",
-            //     truncatedText,
-            // ]);
             var posDot = truncatedText.find(".");
             if (posDot == null) {
                 return ""; // No dot found, return an empty string
@@ -619,6 +681,8 @@ class GoalsView extends WatchUi.DataField {
 
         return truncatedText;
     }
+
+
     //}
 
     // Inside your View class...
@@ -1133,9 +1197,8 @@ class GoalsView extends WatchUi.DataField {
                 if (fillWidth > 0 && charMidX <= fillRightX) {
                     underlyingColor = barColor; // Letter is sitting on top of the color fill
                 }
-
-                // Apply your HSP formula logic
-                if (isColorLight(underlyingColor)) {
+                
+                if ($.isColorLight(underlyingColor)) {
                     dc.setColor(
                         Graphics.COLOR_BLACK,
                         Graphics.COLOR_TRANSPARENT
@@ -1172,7 +1235,8 @@ class GoalsView extends WatchUi.DataField {
             ) {
                 var textValue = getFormattedValue(
                     mProgress.getProgressFieldValue(fieldType),
-                    fieldType
+                    fieldType,
+                    false
                 );
                 // Position text: Centered vertically inside the bar height, with a 6px right margin
                 var fontValue = Graphics.FONT_XTINY;
@@ -1194,8 +1258,7 @@ class GoalsView extends WatchUi.DataField {
                         underlyingColor = barColor; // Letter is sitting on top of the color fill
                     }
 
-                    // Apply your HSP formula logic
-                    if (isColorLight(underlyingColor)) {
+                    if ($.isColorLight(underlyingColor)) {
                         dc.setColor(
                             Graphics.COLOR_BLACK,
                             Graphics.COLOR_TRANSPARENT
@@ -1525,10 +1588,14 @@ class GoalsView extends WatchUi.DataField {
 
     hidden function getFormattedValue(
         value as Float or Number or Null,
-        fieldType as FieldType
+        fieldType as FieldType,
+        zeroIsEmpty as Boolean
     ) as String {
         if (value == null) {
             value = 0.0f;
+        }
+        if (zeroIsEmpty && value == 0.0f) {
+            return "";
         }
 
         switch (fieldType) {
