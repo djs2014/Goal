@@ -71,7 +71,7 @@ class GoalsView extends WatchUi.DataField {
     hidden var mFieldShowValues as Boolean = false;
     hidden var mFieldColumnGap as Number = 8;
     hidden var mFieldDivider as Number = 80;
-    
+
     function onLayout(dc as Graphics.Dc) as Void {
         mCurrentEdgeField = $.getEdgeField(dc);
 
@@ -541,6 +541,7 @@ class GoalsView extends WatchUi.DataField {
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         }
         if ($.gHspShowValue) {
+            // place the HSP value in the top right corner of the rectangle
             var hsp = $.calculateHSP(color);
             dc.drawText(
                 sx + sw - 2,
@@ -548,17 +549,20 @@ class GoalsView extends WatchUi.DataField {
                 Graphics.FONT_XTINY,
                 hsp.format("%.1f"),
                 Graphics.TEXT_JUSTIFY_RIGHT
-            );            
+            );
         }
 
-        // Draw the text label centered inside the allocated grid square
+        if (valueText == null) {
+            valueText = "";
+        }
+
+        // Draw the text label centered inside the allocated rectangle
         var font = Graphics.FONT_XTINY;
         var centerX = sx + sw / 2;
         var centerY = sy + sh / 2;
         var startY = centerY;
-
-        if (valueText == null || valueText.length() == 0) {
-            // Only label
+        if (valueText.length() == 0) {
+            // Only label to show, center it vertically and horizontally
             dc.drawText(
                 centerX,
                 startY,
@@ -569,57 +573,155 @@ class GoalsView extends WatchUi.DataField {
             return;
         }
 
-        // label and valueText
+        // label and valueText (with units)
+        var isPortrait = sh > sw;
         var labelHeight = 0;
         font = Graphics.FONT_XTINY;
         if (label != null && label.length() > 0) {
             labelHeight = dc.getFontHeight(font);
         }
 
-        var fontValue =
-            $.getMatchingFont(
-                dc,
-                mFonts,
-                sw - 4,
-                sh - 4 - labelHeight,
-                valueText
-            ) as Graphics.FontType;
+        var fontValue = Graphics.FONT_TINY;
+        var widthUnits = 0;
+        var units = "";
+        var unitHeight = 0;
+        var valueOnly = valueText;
+
+        // split to allow for different font sizes
+        // number<space>units
+        var posSpace = valueText.find(" ");
+        if (posSpace != null) {
+            font = Graphics.FONT_XTINY;
+            valueOnly = valueText.substring(0, posSpace);
+            units = valueText.substring(posSpace, null);
+            widthUnits = dc.getTextWidthInPixels(units, font);
+            unitHeight = dc.getFontHeight(font);
+        }
+
+        if (isPortrait) {
+            // Draw label, value and units stacked vertically
+            // Match value font without units
+            fontValue =
+                $.getMatchingFont(
+                    dc,
+                    mFonts,
+                    sw - 4,
+                    sh - 4 - labelHeight - unitHeight,
+                    valueOnly
+                ) as Graphics.FontType;
+        } else {
+            // Landscape
+            // Draw label above value and units, centered horizontally
+            // Match value font with units
+            fontValue =
+                $.getMatchingFont(
+                    dc,
+                    mFonts,
+                    sw - 4,
+                    sh - 4 - labelHeight,
+                    valueText
+                ) as Graphics.FontType;
+        }
+
         var valueHeight = dc.getFontHeight(fontValue);
 
-        // If 2 lines won't fit, draw only the value text
-        if (sh < labelHeight + valueHeight) {
-            label = null;
+        if (isPortrait) {
+            // Draw label, value and units stacked vertically
+            var totalHeight = labelHeight + valueHeight + unitHeight;
+            startY = centerY - totalHeight / 2 - labelHeight;
+            if (sh < labelHeight + valueHeight + unitHeight) {
+                // Label doesn't fit, so remove it and center the value text vertically
+                label = null;
+                labelHeight = 0;
+                startY = centerY - valueHeight / 2;
+            }
         } else {
-            var totalHeight = labelHeight + valueHeight - 4; //dc.getFontAscent(font); // Two lines of text
+            // Landscape
+            var totalHeight = labelHeight + valueHeight - 4;
             startY = centerY - totalHeight / 2;
+            if (sh < labelHeight + valueHeight) {
+                // Label doesn't fit, so remove it and center the value text vertically
+                label = null;
+                labelHeight = 0;
+                startY = centerY - (valueHeight - 4) / 2;
+            }
         }
 
-        if (label != null && label.length() > 0) {
-            dc.drawText(
-                centerX,
-                startY,
-                font,
-                label,
-                Graphics.TEXT_JUSTIFY_CENTER
-            );
-        }
+        var widthValue = dc.getTextWidthInPixels(valueOnly, fontValue);
 
-        if (valueText.length() > 0) {
-            // number<space>units
-            var widthUnits = 0;
-            var units = "";
-            var unitHeight = 0;
-            var valueOnly = valueText;
-            var posSpace = valueText.find(" ");
-            if (posSpace != null) {
-                font = Graphics.FONT_XTINY;
-                valueOnly = valueText.substring(0, posSpace);
-                units = valueText.substring(posSpace, null);
-                widthUnits = dc.getTextWidthInPixels(units, font);
-                unitHeight = dc.getFontHeight(font);
+        if (isPortrait) {
+            System.println([
+                "drawProportionalGrid: Portrait mode, labelHeight:",
+                labelHeight,
+                "valueHeight:",
+                valueHeight,
+                "unitHeight:",
+                unitHeight,
+                "valueOnly:",
+                valueOnly,
+                "units:",
+                units,
+            ]);
+            if (label != null && label.length() > 0) {
+                dc.drawText(
+                    centerX,
+                    startY,
+                    font,
+                    label,
+                    Graphics.TEXT_JUSTIFY_CENTER //| Graphics.TEXT_JUSTIFY_VCENTER
+                );
+            }
+            // Draw value and units stacked vertically
+            // and only if it fits within the rectangle width
+            if (widthValue >= sw - 4) {
+                // Truncate the value text to fit within the available width
+                valueOnly = truncateDecimals(dc, valueOnly, fontValue, sw - 4);
+                widthValue = dc.getTextWidthInPixels(valueOnly, fontValue);
+            }
+            if (widthValue < sw - 4) {
+                dc.drawText(
+                    centerX,
+                    startY + labelHeight,
+                    fontValue,
+                    valueOnly,
+                    Graphics.TEXT_JUSTIFY_CENTER //| Graphics.TEXT_JUSTIFY_VCENTER
+                );
+                if (widthUnits > 0 && widthUnits < sw - 4) {
+                    dc.drawText(
+                        centerX,
+                        startY + labelHeight + valueHeight,
+                        font,
+                        units,
+                        Graphics.TEXT_JUSTIFY_CENTER //| Graphics.TEXT_JUSTIFY_VCENTER
+                    );
+                }
+            }
+            return;
+        } else {
+            // Landscape
+            // System.println([
+            //     "drawProportionalGrid: Landscape mode, labelHeight:",
+            //     labelHeight,
+            //     "valueHeight:",
+            //     valueHeight,
+            //     "unitHeight:",
+            //     unitHeight,
+            //     "valueOnly:",
+            //     valueOnly,
+            //     "units:",
+            //     units,
+            // ]);
+
+            if (label != null && label.length() > 0) {
+                dc.drawText(
+                    centerX,
+                    startY,
+                    font,
+                    label,
+                    Graphics.TEXT_JUSTIFY_CENTER //| Graphics.TEXT_JUSTIFY_VCENTER
+                );
             }
 
-            var widthValue = dc.getTextWidthInPixels(valueOnly, fontValue);
             // value and units exceed width -> remove units.
             if (widthValue + widthUnits > sw - 4) {
                 widthUnits = 0;
@@ -632,6 +734,12 @@ class GoalsView extends WatchUi.DataField {
             // Draw value + units centered horizontally
             var totalWidth = widthValue + widthUnits;
             var startX = centerX - totalWidth / 2;
+            // var justify = Graphics.TEXT_JUSTIFY_LEFT;
+            // if (widthUnits == 0) {
+            //     justify =
+            //         Graphics.TEXT_JUSTIFY_CENTER |
+            //         Graphics.TEXT_JUSTIFY_VCENTER;
+            // }
             dc.drawText(
                 startX,
                 startY + labelHeight,
@@ -640,13 +748,12 @@ class GoalsView extends WatchUi.DataField {
                 Graphics.TEXT_JUSTIFY_LEFT
             );
             if (widthUnits > 0) {
-                
                 dc.drawText(
                     startX + widthValue,
                     startY +
-                        labelHeight + // label and unit same fonts 
-                        valueHeight -       
-                        unitHeight - 
+                        labelHeight + // label and unit same fonts
+                        valueHeight -
+                        unitHeight -
                         dc.getFontDescent(fontValue) +
                         dc.getFontDescent(font),
                     font,
@@ -681,7 +788,6 @@ class GoalsView extends WatchUi.DataField {
 
         return truncatedText;
     }
-
 
     //}
 
@@ -1197,7 +1303,7 @@ class GoalsView extends WatchUi.DataField {
                 if (fillWidth > 0 && charMidX <= fillRightX) {
                     underlyingColor = barColor; // Letter is sitting on top of the color fill
                 }
-                
+
                 if ($.isColorLight(underlyingColor)) {
                     dc.setColor(
                         Graphics.COLOR_BLACK,

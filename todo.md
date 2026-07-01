@@ -1,5 +1,4 @@
 drawProportionalGrid
-3 sec power
 portrait segment unit onder value
 landscape als nu 
 
