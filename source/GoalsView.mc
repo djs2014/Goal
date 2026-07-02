@@ -22,6 +22,7 @@ class GoalsView extends WatchUi.DataField {
     hidden var mDarkBackground as Boolean = false;
     hidden var mFieldLayout as FieldLayout = FLVertical;
     hidden var mPaused as Boolean = true;
+    hidden var mDemoMode as Boolean = false;
     hidden var mPauseExtendedCounter as Number = 10;
     hidden var mShowDetails as Boolean = false;
 
@@ -159,7 +160,8 @@ class GoalsView extends WatchUi.DataField {
             0.0f;
 
         // $.logInfo(["Compute: Demo mode:", $.gDemo, "Paused:", mPaused]);
-        if (mPaused && $.gDemo) {
+        mDemoMode = $.gDemo and mPaused; // Only allow demo mode when paused
+        if (mDemoMode) {
             SimulateProgress(info);
         } else {
             mDemoStartTime = 0; // reset demo time so it starts from the beginning when toggled on
@@ -255,6 +257,14 @@ class GoalsView extends WatchUi.DataField {
                 mDemoCounter9 / 100.0,
                 mDemoCounter10 / 100.0,
             ] as Array<Float>;
+    }
+
+    function getDemoValue(idx as Number) as Float {
+        var ratio = 0.0f;
+        if (idx >= 0 && idx < mProgressRatios.size()) {
+            ratio = mProgressRatios[idx];
+        }
+        return ratio * 100.0f; // Return as percentage
     }
 
     // Display the value you computed here. This will be called
@@ -427,13 +437,18 @@ class GoalsView extends WatchUi.DataField {
             var fieldType = fieldTypes[index];
             var label = showLabels ? getFieldLabel(fieldType) : "";
             var color = barColors[index];
-            var valueText = showValues
-                ? getFormattedValue(
-                      mProgress.getProgressFieldValue(fieldType),
-                      fieldType,
-                      true
-                  )
-                : "";
+            var valueText = "";
+            if (showValues) {
+                if (mDemoMode) {
+                    valueText = getDemoValue(index).format("%.0f") + " %";
+                } else {
+                    valueText = getFormattedValue(
+                        mProgress.getProgressFieldValue(fieldType),
+                        fieldType,
+                        true
+                    );
+                }
+            }
 
             // If it's the last element, consume all remaining space to avoid rounding gaps
             if (i == count - 1) {
@@ -705,7 +720,6 @@ class GoalsView extends WatchUi.DataField {
             valueHeight = hasValue ? valueHeight : 0;
             unitHeight = hasUnits ? unitHeight : 0;
             startY = centerY - (labelHeight + valueHeight + unitHeight) / 2;
-
 
             if (hasLabel) {
                 dc.drawText(
@@ -1382,6 +1396,7 @@ class GoalsView extends WatchUi.DataField {
                     fieldType,
                     false
                 );
+
                 // Position text: Centered vertically inside the bar height, with a 6px right margin
                 var fontValue = Graphics.FONT_XTINY;
                 var fontValueHeight = dc.getFontHeight(fontValue);

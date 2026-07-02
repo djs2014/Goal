@@ -55,74 +55,23 @@ public class HeartRate {
             return 0.0f;
         }
 
-        // 1. Get the floor and ceiling bounds for this exact targeted zone
-        // 6:48:40 - [Heart rate zones initialized:, [128, 153, 179, 204, 230, 255]]
-
-        // 3. Convert our target decimal zone (e.g., 2.2f) into an exact target BPM
+        // Convert target decimal zone (e.g., 2.2f) into an exact target BPM
         var targetZoneInt = targetZone.toNumber(); // e.g., 2
         var zoneFloor = mHeartRateZones[targetZoneInt - 1]; // e.g., if targetZone=2, floor is index 1 (153)
         var zoneCeiling = mHeartRateZones[targetZoneInt]; // e.g., if targetZone=2, ceiling is index 2 (179)
         var zoneRemainder = targetZone - targetZoneInt; // e.g., 0.2f
-
-        // if (mWarmUpHeartRate > 0 && liveHeartRate < mHeartRateZones[0]) {
-        //     // get a "Warmup" bar before the real intervals start
-        //     zoneFloor = mWarmUpHeartRate;
-        //     zoneCeiling = mHeartRateZones[0];
-        //     mIsInWarmUp = true;
-        //     // System.println("HeartRate: In Warmup Zone! liveHR=" + liveHeartRate + " warmupHR=" + mWarmUpHeartRate + " zoneFloor=" + zoneFloor + " zoneCeiling=" + zoneCeiling);
-        // } else {
-        //     mIsInWarmUp = false;
-        //     // System.println("HeartRate: In Normal Zone! liveHR=" + liveHeartRate + " zoneFloor=" + zoneFloor + " zoneCeiling=" + zoneCeiling);
-        // }
-
-        // // 2. Handle the edge case if your live HR hasn't even reached the zone yet
-        // if (liveHeartRate < zoneFloor) {
-        //     return 0.0f;
-        // }
-
+       
         // Calculate the exact target BPM for this decimal zone (e.g., 2.2f)
         var targetBpm = zoneFloor + zoneRemainder * (zoneCeiling - zoneFloor);
         // Calculate progress relative to the target BPM
         // If the athlete is at the target BPM exactly, ratio is 1.0f
         var progressRatio = liveHeartRate.toFloat() / targetBpm;
 
-        // System.println(
-        //     "HeartRate: liveHR=" +
-        //         liveHeartRate +
-        //         " targetZone=" +
-        //         targetZone +
-        //         " targetBpm=" +
-        //         targetBpm +
-        //         " progressRatio=" +
-        //         calculateCurrentDecimalZone(liveHeartRate) 
-        // );
+        
         return progressRatio; // e.g., if HR is 166 and targetBpm is 166, returns 1.0f (Perfectly on target!)
-
-        // 3. Perform standard linear normalization: (Value - Min) / (Max - Min)
-        // var range = (zoneCeiling - zoneFloor).toFloat();
-        // if (range <= 0.0f) {
-        //     return 0.0f;
-        // }
-
-        // var progressInZone = (liveHeartRate - zoneFloor).toFloat() / range;
-
-        // return progressInZone; // e.g., if HR is 166 in Zone 2: (166-153)/(179-153) = 13/26 = 0.5f (Perfectly 50% filled!)
     }
 
-    // function setWarmUpHeartRate(warmUpHeartRate as Number) as Void {
-    //     mWarmUpHeartRate = warmUpHeartRate;
-    // }
-
-    // hidden var mIsInWarmUp as Boolean = false;
-    // function getIsInWarmUp() as Boolean {
-    //     return mIsInWarmUp;
-    // }
-
-    // An array representing a classic cyclist's HR zone floor boundaries (in BPM)
-    // Index 0 = Rest/Floor of Z1, Index 1 = Z1/Z2 boundary, Index 2 = Z2/Z3 boundary, etc.
-    // Replace these with your actual tested personal BPM zones!
-    //private var mHrZoneFloors = [100, 125, 145, 160, 175, 190];
-
+        
     function getBpmFromDecimalZone(decimalZone as Float) as Number {
         if (mHeartRateZones.size() < 6) {
             return 0;
@@ -156,8 +105,7 @@ public class HeartRate {
         if (mHeartRateZones.size() < 6 || liveHeartRate <= 0) {
             return 1.0f; // Default to Zone 1 if zones are uninitialized
         }
-        
-    
+            
         // 2. Handle the absolute basement (Below Zone 1 floor)
         if (liveHeartRate < mHeartRateZones[0]) {
             return 1.0f;
