@@ -55,7 +55,7 @@ class PowerPerSec {
         }
 
         _lastComputedPower = (sum / _samplesCount).toNumber();
-        System.println(["PowerPerSec.compute", _lastComputedPower, _powerBuffer, _samplesCount]);
+        // System.println(["PowerPerSec.compute", _lastComputedPower, _powerBuffer, _samplesCount]);
         return _lastComputedPower;
     }
 }
