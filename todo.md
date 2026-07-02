@@ -2,6 +2,8 @@ drawProportionalGrid
 portrait segment unit onder value
 landscape als nu 
 
+hzone allow 0 - 0.9 value
+demo needs values - based on demo ratio for enabled fields 
 
 always calc all fields 
 array with 

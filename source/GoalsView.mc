@@ -52,7 +52,17 @@ class GoalsView extends WatchUi.DataField {
         Graphics.FONT_SYSTEM_MEDIUM,
         Graphics.FONT_SYSTEM_LARGE,
     ];
-
+    hidden var mFontsNumbers as Array = [
+        Graphics.FONT_XTINY,
+        Graphics.FONT_TINY,
+        Graphics.FONT_SYSTEM_SMALL,
+        Graphics.FONT_SYSTEM_MEDIUM,
+        Graphics.FONT_SYSTEM_LARGE,
+        Graphics.FONT_NUMBER_MILD,
+        Graphics.FONT_NUMBER_MEDIUM,
+        Graphics.FONT_NUMBER_HOT,
+        Graphics.FONT_NUMBER_THAI_HOT,
+    ];
     function initialize() {
         DataField.initialize();
         initializeArrays();
@@ -528,10 +538,9 @@ class GoalsView extends WatchUi.DataField {
         dc.setColor(color, Graphics.COLOR_TRANSPARENT);
         dc.fillRectangle(sx + 1, sy + 1, sw - 2, sh - 2);
 
-        if (
-            (label == null || label.length() == 0) &&
-            (valueText == null || valueText.length() == 0)
-        ) {
+        var hasLabel = label != null && label.length() > 0;
+        var hasValue = valueText != null && valueText.length() > 0;
+        if (!hasLabel && !hasValue) {
             return; // Nothing to draw
         }
 
@@ -560,12 +569,11 @@ class GoalsView extends WatchUi.DataField {
         var font = Graphics.FONT_XTINY;
         var centerX = sx + sw / 2;
         var centerY = sy + sh / 2;
-        var startY = centerY;
-        if (valueText.length() == 0) {
+        if (!hasValue) {
             // Only label to show, center it vertically and horizontally
             dc.drawText(
                 centerX,
-                startY,
+                centerY,
                 font,
                 label,
                 Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER
@@ -574,19 +582,19 @@ class GoalsView extends WatchUi.DataField {
         }
 
         // label and valueText (with units)
+        var startY = centerY;
         var isPortrait = sh > sw;
         var labelHeight = 0;
-        font = Graphics.FONT_XTINY;
-        if (label != null && label.length() > 0) {
+        var unitHeight = 0;
+        if (hasLabel) {
             labelHeight = dc.getFontHeight(font);
         }
 
         var fontValue = Graphics.FONT_TINY;
         var widthUnits = 0;
         var units = "";
-        var unitHeight = 0;
+        var hasUnits = false;
         var valueOnly = valueText;
-
         // split to allow for different font sizes
         // number<space>units
         var posSpace = valueText.find(" ");
@@ -596,15 +604,15 @@ class GoalsView extends WatchUi.DataField {
             units = valueText.substring(posSpace, null);
             widthUnits = dc.getTextWidthInPixels(units, font);
             unitHeight = dc.getFontHeight(font);
+            hasUnits = units != null && units.length() > 0;
         }
-
         if (isPortrait) {
             // Draw label, value and units stacked vertically
             // Match value font without units
             fontValue =
                 $.getMatchingFont(
                     dc,
-                    mFonts,
+                    mFontsNumbers,
                     sw - 4,
                     sh - 4 - labelHeight - unitHeight,
                     valueOnly
@@ -616,7 +624,7 @@ class GoalsView extends WatchUi.DataField {
             fontValue =
                 $.getMatchingFont(
                     dc,
-                    mFonts,
+                    mFontsNumbers,
                     sw - 4,
                     sh - 4 - labelHeight,
                     valueText
@@ -627,22 +635,29 @@ class GoalsView extends WatchUi.DataField {
 
         if (isPortrait) {
             // Draw label, value and units stacked vertically
-            var totalHeight = labelHeight + valueHeight + unitHeight;
-            startY = centerY - totalHeight / 2 - labelHeight;
+            startY = centerY - (labelHeight + valueHeight + unitHeight) / 2;
             if (sh < labelHeight + valueHeight + unitHeight) {
-                // Label doesn't fit, so remove it and center the value text vertically
+                // Label doesn't fit, so remove it and center the value and units text vertically
                 label = null;
                 labelHeight = 0;
+                hasLabel = false;
+                startY = centerY - (valueHeight + unitHeight) / 2;
+            }
+            if (sh < valueHeight + unitHeight) {
+                // Units don't fit, so remove them and center the value text vertically
+                units = null;
+                unitHeight = 0;
+                hasUnits = false;
                 startY = centerY - valueHeight / 2;
             }
         } else {
             // Landscape
-            var totalHeight = labelHeight + valueHeight - 4;
-            startY = centerY - totalHeight / 2;
+            startY = centerY - (labelHeight + valueHeight) / 2;
             if (sh < labelHeight + valueHeight) {
                 // Label doesn't fit, so remove it and center the value text vertically
                 label = null;
                 labelHeight = 0;
+                hasLabel = false;
                 startY = centerY - (valueHeight - 4) / 2;
             }
         }
@@ -650,19 +665,49 @@ class GoalsView extends WatchUi.DataField {
         var widthValue = dc.getTextWidthInPixels(valueOnly, fontValue);
 
         if (isPortrait) {
-            System.println([
-                "drawProportionalGrid: Portrait mode, labelHeight:",
-                labelHeight,
-                "valueHeight:",
-                valueHeight,
-                "unitHeight:",
-                unitHeight,
-                "valueOnly:",
-                valueOnly,
-                "units:",
-                units,
-            ]);
-            if (label != null && label.length() > 0) {
+            // System.println([
+            //     "drawProportionalGrid: Portrait mode",
+            //     "sw:",
+            //     sw,
+            //     "sh:",
+            //     sh,
+            //     "labelHeight:",
+            //     labelHeight,
+            //     "valueHeight:",
+            //     valueHeight,
+            //     "unitHeight:",
+            //     unitHeight,
+            //     "valueOnly:",
+            //     valueOnly,
+            //     "units:",
+            //     units,
+            //     "hasLabel:",
+            //     hasLabel,
+            //     "hasUnits:",
+            //     hasUnits,
+            // ]);
+
+            // Draw value and units stacked vertically
+            // and only if it fits within the rectangle width:
+            // label+value+unit | label | label+value | value+unit | value
+
+            // First do the checks
+            if (widthValue >= sw - 4) {
+                // Truncate the value text to fit within the available width
+                valueOnly = truncateDecimals(dc, valueOnly, fontValue, sw - 4);
+                widthValue = dc.getTextWidthInPixels(valueOnly, fontValue);
+            }
+            // Will value fit?
+            hasValue = widthValue < sw - 4;
+            // Will units fit?
+            hasUnits = hasValue && hasUnits && widthUnits < sw - 4;
+            // Adjust the label position based on whether value and units were drawn
+            valueHeight = hasValue ? valueHeight : 0;
+            unitHeight = hasUnits ? unitHeight : 0;
+            startY = centerY - (labelHeight + valueHeight + unitHeight) / 2;
+
+
+            if (hasLabel) {
                 dc.drawText(
                     centerX,
                     startY,
@@ -671,14 +716,7 @@ class GoalsView extends WatchUi.DataField {
                     Graphics.TEXT_JUSTIFY_CENTER //| Graphics.TEXT_JUSTIFY_VCENTER
                 );
             }
-            // Draw value and units stacked vertically
-            // and only if it fits within the rectangle width
-            if (widthValue >= sw - 4) {
-                // Truncate the value text to fit within the available width
-                valueOnly = truncateDecimals(dc, valueOnly, fontValue, sw - 4);
-                widthValue = dc.getTextWidthInPixels(valueOnly, fontValue);
-            }
-            if (widthValue < sw - 4) {
+            if (hasValue) {
                 dc.drawText(
                     centerX,
                     startY + labelHeight,
@@ -686,7 +724,7 @@ class GoalsView extends WatchUi.DataField {
                     valueOnly,
                     Graphics.TEXT_JUSTIFY_CENTER //| Graphics.TEXT_JUSTIFY_VCENTER
                 );
-                if (widthUnits > 0 && widthUnits < sw - 4) {
+                if (hasUnits) {
                     dc.drawText(
                         centerX,
                         startY + labelHeight + valueHeight,
