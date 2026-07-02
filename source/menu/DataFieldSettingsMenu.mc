@@ -46,6 +46,15 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       var mi;
 
       mi = new WatchUi.MenuItem(
+        "Power per|1~60(seconds)",
+        null,
+        "power_per_seconds",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      advMenu.addItem(mi);
+
+      mi = new WatchUi.MenuItem(
         "Cadence counter|0~5(seconds)",
         null,
         "cadence_counter",
@@ -55,33 +64,109 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       advMenu.addItem(mi);
 
       mi = new WatchUi.MenuItem(
-        "Gap columns horizontal|0-20(pixels)",
+        "HSP breakpoint|0-255.0(HSP)",
         null,
-        "gap_columns_horizontal",
+        "hsp_darklight_breakpoint",
         null
       );
-      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      mi.setSubLabel($.getStorageFloatAsString(mi.getId() as String));
       advMenu.addItem(mi);
 
+      var boolean = false;
+
+      boolean = Storage.getValue("hsp_showvalue") ? true : false;
+      advMenu.addItem(
+        new WatchUi.ToggleMenuItem(
+          "Show HSP value",
+          null,
+          "hsp_showvalue",
+          boolean,
+          null
+        )
+      );
+
+      WatchUi.pushView(advMenu, new $.GeneralMenuDelegate(), WatchUi.SLIDE_UP);
+      return;
+    }
+
+    if (id instanceof String && id.equals("presets")) {
+      var presetsMenu = new WatchUi.Menu2({ :title => "Presets" });
+
+      var mi;
+      var presetsIdx = 0;
       mi = new WatchUi.MenuItem(
-        "Gap columns vertical|0-20(pixels)",
+        "Select distance, or|0~ (km)",
         null,
-        "gap_columns_vertical",
+        "preset_distance",
         null
       );
       mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
-      advMenu.addItem(mi);
+      presetsMenu.addItem(mi);
+
+      presetsIdx++;
+      mi = new WatchUi.MenuItem(
+        "Select duration|0~(min)",
+        null,
+        "preset_duration",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      presetsMenu.addItem(mi);
+
+      presetsIdx++;
+      mi = new WatchUi.MenuItem(
+        "Suffer factor|0.5-2.0",
+        null,
+        "preset_suffer_factor",
+        null
+      );
+      mi.setSubLabel($.getStorageFloatAsString(mi.getId() as String));
+      presetsMenu.addItem(mi);
+
+      presetsIdx++;
+      mi = new WatchUi.MenuItem("Recovery", null, "preset_recovery", null);
+      presetsMenu.addItem(mi);
+
+      presetsIdx++;
+      mi = new WatchUi.MenuItem("Casual", null, "preset_casual", null);
+      presetsMenu.addItem(mi);
+
+      presetsIdx++;
+      mi = new WatchUi.MenuItem(
+        "Weight loss",
+        null,
+        "preset_weight_loss",
+        null
+      );
+      presetsMenu.addItem(mi);
+
+      presetsIdx++;
+      mi = new WatchUi.MenuItem("Endurance", null, "preset_endurance", null);
+      presetsMenu.addItem(mi);
+
+      presetsIdx++;
+      mi = new WatchUi.MenuItem("Cardio", null, "preset_cardio", null);
+      presetsMenu.addItem(mi);
+
+      presetsIdx++;
+      mi = new WatchUi.MenuItem(
+        "Short and fast",
+        null,
+        "preset_short_fast",
+        null
+      );
+      presetsMenu.addItem(mi);
 
       WatchUi.pushView(
-        advMenu,
-        new $.GeneralMenuDelegate(),
+        presetsMenu,
+        new $.PresetsMenuDelegate(presetsMenu, presetsIdx),
         WatchUi.SLIDE_UP
       );
       return;
     }
 
-    if (id instanceof String && id.equals("targets")) {
-      var targetMenu = new WatchUi.Menu2({ :title => "Targets / Goals" });
+    if (id instanceof String && id.equals("goals")) {
+      var targetMenu = new WatchUi.Menu2({ :title => "Goals" });
 
       var mi;
 
@@ -92,6 +177,20 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         null
       );
       mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      targetMenu.addItem(mi);
+
+      mi = new WatchUi.MenuItem(
+        "Duration|0~(min)",
+        null,
+        "target_duration",
+        null
+      );
+      mi.setSubLabel(
+        $.getStorageNumberAsHHMM(mi.getId() as String) +
+          " (" +
+          $.getStorageNumberAsString(mi.getId() as String) +
+          " min)"
+      );
       targetMenu.addItem(mi);
 
       mi = new WatchUi.MenuItem(
@@ -123,6 +222,22 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         "Average power|0~(W)",
         null,
         "target_average_power",
+        null
+      );
+      targetPower = $.getStorageValue(mi.getId() as String, 0) as Number;
+      if (targetPower == 0) {
+        mi.setSubLabel(
+          "profile ftp: " + $.getUserFtp().format("%d") + " watts"
+        );
+      } else {
+        mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      }
+      targetMenu.addItem(mi);
+
+      mi = new WatchUi.MenuItem(
+        "Normalized power|0~(W)",
+        null,
+        "target_normalized_power",
         null
       );
       mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
@@ -160,50 +275,21 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       targetMenu.addItem(mi);
 
       mi = new WatchUi.MenuItem(
-        "Normalized power|0~(W)",
-        null,
-        "target_normalized_power",
-        null
-      );
-      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
-      targetMenu.addItem(mi);
-
-      mi = new WatchUi.MenuItem(
-        "Total ascent|0~(m)",
-        null,
-        "target_total_ascent",
-        null
-      );
-      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
-      targetMenu.addItem(mi);
-
-      mi = new WatchUi.MenuItem(
-        "Total descent|0~(m)",
-        null,
-        "target_total_descent",
-        null
-      );
-      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
-      targetMenu.addItem(mi);
-
-      mi = new WatchUi.MenuItem(
-        "Minutes elapsed|0~(min)",
-        null,
-        "target_minutes_elapsed",
-        null
-      );
-      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
-      targetMenu.addItem(mi);
-
-      mi = new WatchUi.MenuItem(
-        "Heart rate zone",
+        "Heart rate zone|1.0-5.0",
         null,
         "target_heart_rate_zone",
         null
       );
-      mi.setSubLabel(
-        "zone " + $.getStorageNumberAsString(mi.getId() as String)
+      mi.setSubLabel("zone " + $.getStorageFloatAsString(mi.getId() as String));
+      targetMenu.addItem(mi);
+
+      mi = new WatchUi.MenuItem(
+        "Average heart rate zone|1.0-5.0",
+        null,
+        "target_average_heart_rate_zone",
+        null
       );
+      mi.setSubLabel("zone " + $.getStorageFloatAsString(mi.getId() as String));
       targetMenu.addItem(mi);
 
       // FTIntensityFactor
@@ -232,6 +318,24 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       mi.setSubLabel($.getStorageFloatAsString(mi.getId() as String));
       targetMenu.addItem(mi);
 
+      mi = new WatchUi.MenuItem(
+        "Total ascent|0~(m)",
+        null,
+        "target_total_ascent",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      targetMenu.addItem(mi);
+
+      mi = new WatchUi.MenuItem(
+        "Total descent|0~(m)",
+        null,
+        "target_total_descent",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      targetMenu.addItem(mi);
+
       WatchUi.pushView(
         targetMenu,
         new $.GeneralMenuDelegate(),
@@ -240,14 +344,22 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       return;
     }
 
-    if (id instanceof String && id.equals("show_fields")) {
+    if (
+      id instanceof String &&
+      (id.equals("show_one_field") ||
+        id.equals("show_large_field") ||
+        id.equals("show_wide_field") ||
+        id.equals("show_small_field"))
+    ) {
       var label = menuItem.getLabel();
-      var prefix = id.toString();
+      //var prefix = id.toString();
       var fieldMenu = new WatchUi.Menu2({ :title => label + " items" });
 
       var storageKey = id.toString();
 
-      var array = $.getStorageValue(storageKey, []) as Array<Number or Boolean>;
+      var array =
+        $.getStorageValue(storageKey, []) as
+        Array<Numeric or Boolean or FieldLayout>;
       // Check size
       if (
         $.ensureArraySize(
@@ -261,26 +373,70 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
           array as Array<Application.PropertyValueType>
         );
       }
+      var index = 0;
 
       // Layout
-      var mi = new WatchUi.MenuItem("Layout", null, prefix + "|0", null);
-      mi.setSubLabel($.getLayoutByIndex(prefix, 0));
-      fieldMenu.addItem(mi);
+      $.addMenuItem(
+        fieldMenu,
+        "Layout", // Don't change this label, it's used in the delegate to identify column fields
+        $.getFieldLayoutAsString(array[index] as FieldLayout),
+        getKeyAndIndex(storageKey, index)
+      );
 
-      // // Divider TODO
-      // mi = new WatchUi.MenuItem("Fields", null, null, null);
+      // var mi = new WatchUi.MenuItem("Layout", null, prefix + "|" + index.format("%d"), null);
+      // mi.setSubLabel($.getLayoutByIndex(prefix, 0));
       // fieldMenu.addItem(mi);
 
+      // Show labels
+      index = 1;
+      $.addToggleMenuItem(
+        fieldMenu,
+        "Show labels",
+        null,
+        $.getKeyAndIndex(storageKey, index),
+        array[index] == true
+      );
+
+      // Show values
+      index = 2;
+      $.addToggleMenuItem(
+        fieldMenu,
+        "Show values",
+        null,
+        $.getKeyAndIndex(storageKey, index),
+        array[index] == true
+      );
+
+      // Gap columns
+      index = 3;
+      $.addMenuItem(
+        fieldMenu,
+        "Gap columns|0~20(pixels)",
+        (array[index] as Number).toString(),
+        getKeyAndIndex(storageKey, index)
+      );
+
+      // divider at %
+      index = 4;
+      $.addMenuItem(
+        fieldMenu,
+        "Divider at|0~100(%)",
+        (array[index] as Number).toString(),
+        getKeyAndIndex(storageKey, index)
+      );
+
+      System.println(array);
+
       // Bars
-      for (var i = 1; i < $.gShowFieldsArraySize; i++) {
-        mi = new WatchUi.MenuItem(
-          "Bar " + i,
-          null,
-          prefix + "|" + i.format("%d"),
-          null
+      index = 5;
+      for (var i = index; i < $.gShowFieldsArraySize; i++) {
+        var colNumber = i - index + 1;
+        $.addMenuItem(
+          fieldMenu,
+          "Bar " + colNumber, // Don't change this label, it's used in the delegate to identify column fields
+          $.getFieldTypeAsString(array[i] as FieldType),
+          getKeyAndIndex(storageKey, i)
         );
-        mi.setSubLabel($.getFieldByIndex(prefix, i));
-        fieldMenu.addItem(mi);
       }
 
       WatchUi.pushView(
@@ -291,16 +447,68 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       return;
     }
 
-    // if (id instanceof String && menuItem instanceof ToggleMenuItem) {
-    //   $.setStorageValueOrArray(id, menuItem.isEnabled());
-    //   return;
-    // }
+    if (id instanceof String && id.equals("alerts")) {
+      var alertMenu = new WatchUi.Menu2({ :title => "Alerts" });
 
-    //  if (id instanceof String && item instanceof ToggleMenuItem) {
-    //   Storage.setValue(id as String, item.isEnabled());
-    //   item.setSubLabel($.subMenuToggleMenuItem(id as String));
-    //   return;
-    // }
+      var mi;
+      var boolean;
+
+      mi = new WatchUi.MenuItem(
+        "Calorie window|0~ (kcal)",
+        null,
+        "alert_calories_window",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      alertMenu.addItem(mi);
+
+      boolean = $.getStorageValue("alert_calories_sound", false) as Boolean;
+      alertMenu.addItem(
+        new WatchUi.ToggleMenuItem(
+          "Calorie sound",
+          null,
+          "alert_calories_sound",
+          boolean,
+          null
+        )
+      );
+
+      mi = new WatchUi.MenuItem(
+        "Time window|0~ (min)",
+        null,
+        "alert_timeelapsed_window",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      alertMenu.addItem(mi);
+
+      boolean = $.getStorageValue("alert_timeelapsed_sound", false) as Boolean;
+      alertMenu.addItem(
+        new WatchUi.ToggleMenuItem(
+          "Time sound",
+          null,
+          "alert_timeelapsed_sound",
+          boolean,
+          null
+        )
+      );
+
+      mi = new WatchUi.MenuItem(
+        "Display time|0~ (sec)",
+        null,
+        "alert_displaytime_sec",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      alertMenu.addItem(mi);
+
+      WatchUi.pushView(
+        alertMenu,
+        new $.GeneralMenuDelegate(),
+        WatchUi.SLIDE_UP
+      );
+      return;
+    }
   }
 
   function onSelectedSelection(
@@ -335,7 +543,13 @@ class GeneralMenuDelegate extends WatchUi.Menu2InputDelegate {
       _arrayIndex = idx;
     }
 
-    if (id instanceof String && id.find("|") != null) {
+    // Column field selection
+    if (
+      id instanceof String &&
+      id.find("|") != null &&
+      (_item.getLabel().find("Bar") != null ||
+        _item.getLabel().find("Layout") != null)
+    ) {
       var prefix = stringLeft(id, "|", "");
       var index = stringRight(id, "|", "").toNumber();
       if (prefix == "" || index == null) {
@@ -361,18 +575,21 @@ class GeneralMenuDelegate extends WatchUi.Menu2InputDelegate {
       return;
     }
 
-    if (id.equals("target_heart_rate_zone")) {
-      var sp = new selectionMenuPicker("Target heartrate zone", id as String);
-      sp.add("Zone 1", null, 1);
-      sp.add("Zone 2", null, 2);
-      sp.add("Zone 3", null, 3);
-      sp.add("Zone 4", null, 4);
-      sp.add("Zone 5", null, 5);
+    // if (
+    //   id.equals("target_heart_rate_zone") ||
+    //   id.equals("target_average_heart_rate_zone")
+    // ) {
+    //   var sp = new selectionMenuPicker("Target heartrate zone", id as String);
+    //   sp.add("Zone 1", null, 1);
+    //   sp.add("Zone 2", null, 2);
+    //   sp.add("Zone 3", null, 3);
+    //   sp.add("Zone 4", null, 4);
+    //   sp.add("Zone 5", null, 5);
 
-      sp.setOnSelected(self, :onSelectedSelection, _item);
-      sp.show();
-      return;
-    }
+    //   sp.setOnSelected(self, :onSelectedSelection, _item);
+    //   sp.show();
+    //   return;
+    // }
 
     if (id instanceof String && _item instanceof ToggleMenuItem) {
       $.setStorageValueOrArray(id, _item.isEnabled());
@@ -544,6 +761,14 @@ function getFieldLayoutAsString(fieldLayout as FieldLayout) as String {
       return "Vertical";
     case FLHorizontal:
       return "Horizontal";
+    case FLProportional:
+      return "Proportional";
+    case FLCircle:
+      return "Circle";
+    case FL2Circles:
+      return "2 Circles";
+    case FLRadialGauge:
+      return "Radial Gauge";
     default:
       return "unknown";
   }
@@ -553,44 +778,48 @@ function getFieldTypeAsString(fieldType as FieldType) as String {
   switch (fieldType) {
     case FTUnknown:
       return "Unknown";
+    // Duration related fields
     case FTDistance:
       return "Distance";
-    case FTCalories:
-      return "Calories";
-    case FTAverageHeartRateZone:
-      return "Avg heartrate";
-    case FTPower:
-      return "Power";
-    case FTAveragePower:
-      return "Avg power";
-    case FTAverageSpeed:
-      return "Avg speed";
-    case FTAverageCadence:
-      return "Avg cadence";
-    case FTNormalizedPower:
-      return "Normalized power";
-    case FTTotalAscent:
-      return "Total ascent";
-    case FTTotalDescent:
-      return "Total descent";
-    case FTMinutesElapsed:
-      return "Minutes elapsed";
-    case FTHeartRateZone:
-      return "Heart rate zone";
     case FTDistanceToDestination:
       return "Dist to destination";
     case FTDistanceToNext:
       return "Distance to next";
     case FTDistanceOrNavDestination:
       return "Dist or Nav destination";
+    case FTMinutesElapsed:
+      return "Time elapsed";
+    case FTCalories:
+      return "Calories";
     case FTTrainingStressScore:
       return "Training stress score";
+    // Average related fields
+    case FTAverageSpeed:
+      return "Avg speed";
+    case FTAverageCadence:
+      return "Avg cadence";
+    case FTAveragePower:
+      return "Avg power";
+    case FTAverageHeartRateZone:
+      return "Avg heartrate zone";
+    case FTNormalizedPower:
+      return "Normalized power";
     case FTIntensityFactor:
       return "Intensity factor";
-    case FTCadence:
-      return "Cadence";
+    // Current related fields
     case FTSpeed:
       return "Speed";
+    case FTCadence:
+      return "Cadence";
+    case FTPower:
+      return "Power";
+    case FTHeartRateZone:
+      return "Heart rate zone";
+    // Other
+    case FTTotalAscent:
+      return "Total ascent";
+    case FTTotalDescent:
+      return "Total descent";
     default:
       return "Unknown";
   }

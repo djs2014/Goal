@@ -1,10 +1,14 @@
 import Toybox.Lang;
 import Toybox.System;
 
-const FieldLayoutCount = 2;
+const FieldLayoutCount = 3;
 enum FieldLayout {
     FLVertical = 0,
-    FLHorizontal = 1
+    FLHorizontal = 1,
+    FLProportional = 2,
+    FLCircle = 3,
+    FL2Circles = 4,   
+    FLRadialGauge = 5, 
 }
 
 var FieldTypeCount = 20; // incl the 0
@@ -28,8 +32,8 @@ enum FieldType {
     // Current related fields
     FTSpeed = 14,  
     FTCadence = 15,  
-    FTHeartRateZone = 16,  
-    FTPower = 17, 
+    FTPower = 16, 
+    FTHeartRateZone = 17,  
     // Other
     FTTotalAscent = 18,
     FTTotalDescent = 19,

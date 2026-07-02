@@ -2,6 +2,7 @@ import Toybox.Activity;
 import Toybox.Graphics;
 import Toybox.Lang;
 import Toybox.WatchUi;
+using Toybox.Math;
 
 var gMaxProgressColumns as Number = 10;
 
@@ -21,6 +22,7 @@ class GoalsView extends WatchUi.DataField {
     hidden var mDarkBackground as Boolean = false;
     hidden var mFieldLayout as FieldLayout = FLVertical;
     hidden var mPaused as Boolean = true;
+    hidden var mDemoMode as Boolean = false;
     hidden var mPauseExtendedCounter as Number = 10;
     hidden var mShowDetails as Boolean = false;
 
@@ -30,43 +32,102 @@ class GoalsView extends WatchUi.DataField {
     hidden var mProgressFields as Array<FieldType> = new Array<
         FieldType
     >[$.gMaxProgressColumns];
-    hidden var mProgressArray as Array<Float> = new Array<
+    hidden var mProgressRatios as Array<Float> = new Array<
         Float
     >[$.gMaxProgressColumns];
     hidden var mProgressColors as Array<Graphics.ColorType> = new Array<
         Graphics.ColorType
     >[$.gMaxProgressColumns];
-    hidden var mProgressFieldValues as Array<Float> = new Array<
-        Float
-    >[$.gMaxProgressColumns];
+
+    // Used when D2D is null on pause
+    hidden var mProgressFieldValueDistance as Float = 0.0f;
 
     hidden var mProgress as Progress = new Progress();
     hidden var mNormPowerEngine as NormPowerEngine = new NormPowerEngine();
     hidden var mHasCourseNavigation as Boolean = false;
 
+    hidden var mFonts as Array = [
+        Graphics.FONT_XTINY,
+        Graphics.FONT_TINY,
+        Graphics.FONT_SYSTEM_SMALL,
+        Graphics.FONT_SYSTEM_MEDIUM,
+        Graphics.FONT_SYSTEM_LARGE,
+    ];
+    hidden var mFontsNumbers as Array = [
+        Graphics.FONT_XTINY,
+        Graphics.FONT_TINY,
+        Graphics.FONT_SYSTEM_SMALL,
+        Graphics.FONT_SYSTEM_MEDIUM,
+        Graphics.FONT_SYSTEM_LARGE,
+        Graphics.FONT_NUMBER_MILD,
+        Graphics.FONT_NUMBER_MEDIUM,
+        Graphics.FONT_NUMBER_HOT,
+        Graphics.FONT_NUMBER_THAI_HOT,
+    ];
     function initialize() {
         DataField.initialize();
+        initializeArrays();
     }
 
-    // Set your layout here. Anytime the size of obscurity of
-    // the draw context is changed this will be called.
-    function onLayout(dc as Graphics.Dc) as Void {
-        var showFields =
-            $.getStorageValue("show_fields", [$.gShowFieldsArraySize]) as
-            Array<Numeric or FieldLayout>;
-        if ($.ensureArraySize(showFields, $.gShowFieldsArraySize, 0)) {
-            $.setStorageValueOrArray("show_fields", showFields);
+    function initializeArrays() as Void {
+        for (var i = 0; i < $.gMaxProgressColumns; i++) {
+            mProgressFields[i] = 0;
+            mProgressRatios[i] = 0.0f;
+            mProgressColors[i] = Graphics.COLOR_BLACK;
         }
-        $.logInfo(["onLayout: showFields:", showFields]);
-        // Layout
+    }
+
+    hidden var mCurrentEdgeField as EdgeField = EfLarge;
+    hidden var mFieldShowLabels as Boolean = false;
+    hidden var mFieldShowValues as Boolean = false;
+    hidden var mFieldColumnGap as Number = 8;
+    hidden var mFieldDivider as Number = 80;
+
+    function onLayout(dc as Graphics.Dc) as Void {
+        mCurrentEdgeField = $.getEdgeField(dc);
+
+        var showFields = [] as Array<Numeric or FieldLayout or Boolean>;
+        if (mCurrentEdgeField == EfOne) {
+            showFields =
+                $.getStorageValue("show_one_field", [$.gShowFieldsArraySize]) as
+                Array<Numeric or FieldLayout or Boolean>;
+        } else if (mCurrentEdgeField == EfLarge) {
+            showFields =
+                $.getStorageValue("show_large_field", [
+                    $.gShowFieldsArraySize,
+                ]) as Array<Numeric or FieldLayout or Boolean>;
+        } else if (mCurrentEdgeField == EfWide) {
+            showFields =
+                $.getStorageValue("show_wide_field", [
+                    $.gShowFieldsArraySize,
+                ]) as Array<Numeric or FieldLayout or Boolean>;
+        } else if (mCurrentEdgeField == EfSmall) {
+            showFields =
+                $.getStorageValue("show_small_field", [
+                    $.gShowFieldsArraySize,
+                ]) as Array<Numeric or FieldLayout or Boolean>;
+        } else {
+            showFields =
+                $.getStorageValue("show_one_field", [$.gShowFieldsArraySize]) as
+                Array<Numeric or FieldLayout or Boolean>;
+        }
+
+        // $.logInfo(["onLayout: showFields:", showFields]);
+
         mFieldLayout = showFields[0] as FieldLayout;
-        mProgressFields = showFields.slice(1, null) as Array<FieldType>;
+        mFieldShowLabels = showFields[1] == true;
+        mFieldShowValues = showFields[2] == true;
+        mFieldColumnGap = showFields[3] as Number;
+        mFieldDivider = showFields[4] as Number;
+
+        mProgressFields =
+            showFields.slice($.gPreambleFieldCount, null) as Array<FieldType>;
+
         // Remove the entries `where no field is assigned (value of 0)
         mProgressFields = $.removeZeros(mProgressFields);
-        // Add to maximum size to match mProgressArray size
+        // Add to maximum size to match mProgressRatios size
         $.ensureArraySize(mProgressFields, $.gMaxProgressColumns, 0);
-        $.logInfo(["onLayout: mProgressFields:", mProgressFields]);
-        $.logInfo(["onLayout: mProgressFieldValues:", mProgressFieldValues]);
+        // $.logInfo(["onLayout: mProgressFields:", mProgressFields]);
     }
 
     // The given info object contains all the current workout information.
@@ -92,34 +153,41 @@ class GoalsView extends WatchUi.DataField {
         } else {
             mPauseExtendedCounter -= 1;
         }
+
+        // Check if we have course navigation data available by checking if distanceToDestination is non-zero
+        mHasCourseNavigation =
+            ($.getActivityValue(info, :distanceToDestination, 0.0f) as Float) >
+            0.0f;
+
         // $.logInfo(["Compute: Demo mode:", $.gDemo, "Paused:", mPaused]);
-        if (mPaused && $.gDemo) {
+        mDemoMode = $.gDemo and mPaused; // Only allow demo mode when paused
+        if (mDemoMode) {
             SimulateProgress(info);
         } else {
             mDemoStartTime = 0; // reset demo time so it starts from the beginning when toggled on
             $.gDemo = false; // reset demo flag so it doesn't keep simulating when paused
 
+            $.gPowerPerSec.compute(info);
             var power = $.getActivityValue(info, :currentPower, 0) as Number;
             var np = mNormPowerEngine.compute(power);
             mProgress.setNormalizedPower(np);
 
+            // Calculate for all fieldTypes the value
+            mProgress.updateProgressFieldValues(info);
+
+            // TODO - use mProgressFieldValues in getProgressForField -> define it in mProgress class
+
+            // Update progress values
+            for (var i = 0; i < mProgressFields.size(); i++) {
+                var fieldType = mProgressFields[i];
+                mProgressRatios[i] = mProgress.getProgressForField(
+                    info,
+                    fieldType
+                );
+            }
+            // System.println("Compute: mProgressRatios: " + mProgressRatios);
+
             if (!mPaused) {
-                // Update progress values
-                for (var i = 0; i < mProgressFields.size(); i++) {
-                    var fieldType = mProgressFields[i];
-                    mProgressArray[i] = mProgress.getProgressForField(
-                        info,
-                        fieldType
-                    );
-
-                    //if ($.gShowValues) {
-                    mProgressFieldValues[i] = mProgress.getValueForField(
-                        info,
-                        fieldType
-                    );
-                    //}
-                }
-
                 var cadence =
                     $.getActivityValue(info, :currentCadence, 0) as Number;
                 if (!mHasCadence) {
@@ -138,14 +206,10 @@ class GoalsView extends WatchUi.DataField {
                 }
             }
         }
-        // Check if we have course navigation data available by checking if distanceToDestination is non-zero
-        mHasCourseNavigation =
-            ($.getActivityValue(info, :distanceToDestination, 0.0f) as Float) >
-            0.0f;
 
-        var numBars = mProgressArray.size();
+        var numBars = mProgressRatios.size();
         for (var i = 0; i < numBars; i++) {
-            mProgressColors[i] = getDynamicColor(mProgressArray[i]);
+            mProgressColors[i] = getDynamicColor(mProgressRatios[i]);
         }
     }
 
@@ -180,7 +244,7 @@ class GoalsView extends WatchUi.DataField {
         mDemoCounter9 = (mDemoCounter9 + 10).toNumber() % 150;
         mDemoCounter10 = (mDemoCounter10 + 11).toNumber() % 150;
 
-        mProgressArray =
+        mProgressRatios =
             [
                 mDemoCounter1 / 100.0,
                 mDemoCounter2 / 100.0,
@@ -195,12 +259,23 @@ class GoalsView extends WatchUi.DataField {
             ] as Array<Float>;
     }
 
+    function getDemoValue(idx as Number) as Float {
+        var ratio = 0.0f;
+        if (idx >= 0 && idx < mProgressRatios.size()) {
+            ratio = mProgressRatios[idx];
+        }
+        return ratio * 100.0f; // Return as percentage
+    }
+
     // Display the value you computed here. This will be called
     // once a second when the data field is visible.
     function onUpdate(dc as Graphics.Dc) as Void {
-        if ($.gExitedMenu) {
-            // fix for leaving menu, draw complete screen, large field
+        // Force reset the hardware clipping mask back to full canvas size
+        if (dc has :clearClip) {
             dc.clearClip();
+        }
+        if ($.gExitedMenu) {
+            onLayout(dc);
             $.gExitedMenu = false;
         }
 
@@ -225,7 +300,7 @@ class GoalsView extends WatchUi.DataField {
         switch (mFieldLayout) {
             case FLVertical:
                 // Calculate dynamic width for vertical pillars side-by-side
-                gap = $.gGapColumnsVertical; // Use user-defined gap for vertical layout
+                gap = mFieldColumnGap; // Use user-defined gap for vertical layout
                 var availableWidth = screenW - margin * 2;
                 var totalGapWidth = (numBars - 1) * gap;
                 var barWidthVertical = (
@@ -246,7 +321,7 @@ class GoalsView extends WatchUi.DataField {
                         barY,
                         barWidthVertical,
                         barHeightVertical,
-                        mProgressArray[i],
+                        mProgressRatios[i],
                         mProgressColors[i],
                         mProgressFields[i]
                     );
@@ -254,7 +329,7 @@ class GoalsView extends WatchUi.DataField {
                 break;
             default:
             case FLHorizontal:
-                gap = $.gGapColumnsHorizontal; // Use user-defined gap for horizontal layout
+                gap = mFieldColumnGap; // Use user-defined gap for horizontal layout
                 // Calculate dynamic height for horizontal rows stacked vertically
                 var availableHeight = screenH - margin * 2;
                 var totalGapHeight = (numBars - 1) * gap;
@@ -275,13 +350,674 @@ class GoalsView extends WatchUi.DataField {
                         barY,
                         barWidthHorizontal,
                         barHeightHorizontal,
-                        mProgressArray[i],
+                        mProgressRatios[i],
                         mProgressColors[i],
                         mProgressFields[i]
                     );
                 }
                 break;
+
+            case FLProportional:
+                drawProportionalGrid(
+                    dc,
+                    1,
+                    1,
+                    dc.getWidth() - 2,
+                    dc.getHeight() - 2
+                );
+                break;
         }
+    }
+
+    //! Render the proportional layout inside a specified bounding box
+    //! @param dc The device context
+    //! @param x Starting X coordinate of the container rectangle
+    //! @param y Starting Y coordinate of the container rectangle
+    //! @param width Total width of the container
+    //! @param height Total height of the container
+    //! @param ratios Array of Float values (0.0 to 1.0), max 10 elements
+    //! @param labels Array of Strings corresponding to each ratio
+    public function drawProportionalGrid(
+        dc as Graphics.Dc,
+        x as Number,
+        y as Number,
+        width as Number,
+        height as Number
+    ) as Void {
+        // ratios as Array<Float>,
+        // barColors as Array<Graphics.ColorType>,
+        // fieldTypes as Array<FieldType>
+        var ratios = mProgressRatios;
+        var barColors = mProgressColors;
+        var fieldTypes = mProgressFields;
+
+        // TODO: if all ratios are between .9 and 1.0, then ..
+        //ratios = [2.99f, 0.93f, 0.92f, 0.93f, 0.98f, 0.91f];
+
+        var totalRatio = 0.0f;
+        var validIndices = [] as Array<Number>;
+
+        // 1. Filter out zeros and calculate total active weight
+        for (var i = 0; i < ratios.size(); i++) {
+            if (ratios[i] > 0.0) {
+                totalRatio += ratios[i];
+                validIndices.add(i);
+            }
+        }
+
+        var count = validIndices.size();
+        if (count == 0 || width <= 0 || height <= 0) {
+            var colors = getThemeColor(mDarkBackground);
+            dc.setColor(colors[:text], Graphics.COLOR_TRANSPARENT);
+            dc.drawText(
+                x + width / 2,
+                y + height / 2,
+                Graphics.FONT_TINY,
+                "No Data",
+                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER
+            );
+            return; // Nothing to draw
+        }
+
+        var currentX = x;
+        var currentY = y;
+        var remainingWidth = width;
+        var remainingHeight = height;
+        var remainingRatio = totalRatio;
+
+        var minWidth = dc.getTextWidthInPixels("888", Graphics.FONT_XTINY) + 4;
+        var minHeight = dc.getFontHeight(Graphics.FONT_XTINY) + 4;
+        var showLabels = mFieldShowLabels || mShowDetails;
+        var showValues = mFieldShowValues || mShowDetails;
+
+        // 2. Iterate and carve out segments
+        for (var i = 0; i < count; i++) {
+            var index = validIndices[i];
+            var currentWeight = ratios[index];
+            var fieldType = fieldTypes[index];
+            var label = showLabels ? getFieldLabel(fieldType) : "";
+            var color = barColors[index];
+            var valueText = "";
+            if (showValues) {
+                if (mDemoMode) {
+                    valueText = getDemoValue(index).format("%.0f") + " %";
+                } else {
+                    valueText = getFormattedValue(
+                        mProgress.getProgressFieldValue(fieldType),
+                        fieldType,
+                        true
+                    );
+                }
+            }
+
+            // If it's the last element, consume all remaining space to avoid rounding gaps
+            if (i == count - 1) {
+                drawSegment(
+                    dc,
+                    currentX,
+                    currentY,
+                    remainingWidth,
+                    remainingHeight,
+                    label,
+                    color,
+                    valueText
+                );
+                break;
+            }
+
+            // Determine orientation dynamically based on aspect ratio to favor squares
+            if (remainingWidth >= remainingHeight) {
+                // Slice Horizontally (Columns)
+                var allocatedWidth = (
+                    (currentWeight / remainingRatio) *
+                    remainingWidth
+                ).toNumber();
+
+                // Enforce minimum width constraint
+                if (allocatedWidth < minWidth) {
+                    allocatedWidth = minWidth;
+                }
+                if (
+                    allocatedWidth >
+                    remainingWidth - (count - 1 - i) * minWidth
+                ) {
+                    allocatedWidth =
+                        remainingWidth - (count - 1 - i) * minWidth;
+                }
+
+                drawSegment(
+                    dc,
+                    currentX,
+                    currentY,
+                    allocatedWidth,
+                    remainingHeight,
+                    label,
+                    color,
+                    valueText
+                );
+
+                currentX += allocatedWidth;
+                remainingWidth -= allocatedWidth;
+            } else {
+                // Slice Vertically (Rows)
+                var allocatedHeight = (
+                    (currentWeight / remainingRatio) *
+                    remainingHeight
+                ).toNumber();
+
+                // Enforce minimum height constraint
+                if (allocatedHeight < minHeight) {
+                    allocatedHeight = minHeight;
+                }
+                if (
+                    allocatedHeight >
+                    remainingHeight - (count - 1 - i) * minHeight
+                ) {
+                    allocatedHeight =
+                        remainingHeight - (count - 1 - i) * minHeight;
+                }
+
+                drawSegment(
+                    dc,
+                    currentX,
+                    currentY,
+                    remainingWidth,
+                    allocatedHeight,
+                    label,
+                    color,
+                    valueText
+                );
+
+                currentY += allocatedHeight;
+                remainingHeight -= allocatedHeight;
+            }
+
+            remainingRatio -= currentWeight;
+        }
+    }
+
+    //! Helper method to draw the single rectangle and its centered label
+    private function drawSegment(
+        dc as Graphics.Dc,
+        sx as Number,
+        sy as Number,
+        sw as Number,
+        sh as Number,
+        label as String?,
+        color as Graphics.ColorType,
+        valueText as String?
+    ) as Void {
+        // Draw the bounding box border
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawRectangle(sx, sy, sw, sh);
+        dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+        dc.fillRectangle(sx + 1, sy + 1, sw - 2, sh - 2);
+
+        var hasLabel = label != null && label.length() > 0;
+        var hasValue = valueText != null && valueText.length() > 0;
+        if (!hasLabel && !hasValue) {
+            return; // Nothing to draw
+        }
+
+        if ($.isColorLight(color)) {
+            dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+        } else {
+            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        }
+        if ($.gHspShowValue) {
+            // place the HSP value in the top right corner of the rectangle
+            var hsp = $.calculateHSP(color);
+            dc.drawText(
+                sx + sw - 2,
+                sy + 2,
+                Graphics.FONT_XTINY,
+                hsp.format("%.1f"),
+                Graphics.TEXT_JUSTIFY_RIGHT
+            );
+        }
+
+        if (valueText == null) {
+            valueText = "";
+        }
+
+        // Draw the text label centered inside the allocated rectangle
+        var font = Graphics.FONT_XTINY;
+        var centerX = sx + sw / 2;
+        var centerY = sy + sh / 2;
+        if (!hasValue) {
+            // Only label to show, center it vertically and horizontally
+            dc.drawText(
+                centerX,
+                centerY,
+                font,
+                label,
+                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER
+            );
+            return;
+        }
+
+        // label and valueText (with units)
+        var startY = centerY;
+        var isPortrait = sh > sw;
+        var labelHeight = 0;
+        var unitHeight = 0;
+        if (hasLabel) {
+            labelHeight = dc.getFontHeight(font);
+        }
+
+        var fontValue = Graphics.FONT_TINY;
+        var widthUnits = 0;
+        var units = "";
+        var hasUnits = false;
+        var valueOnly = valueText;
+        // split to allow for different font sizes
+        // number<space>units
+        var posSpace = valueText.find(" ");
+        if (posSpace != null) {
+            font = Graphics.FONT_XTINY;
+            valueOnly = valueText.substring(0, posSpace);
+            units = valueText.substring(posSpace, null);
+            widthUnits = dc.getTextWidthInPixels(units, font);
+            unitHeight = dc.getFontHeight(font);
+            hasUnits = units != null && units.length() > 0;
+        }
+        if (isPortrait) {
+            // Draw label, value and units stacked vertically
+            // Match value font without units
+            fontValue =
+                $.getMatchingFont(
+                    dc,
+                    mFontsNumbers,
+                    sw - 4,
+                    sh - 4 - labelHeight - unitHeight,
+                    valueOnly
+                ) as Graphics.FontType;
+        } else {
+            // Landscape
+            // Draw label above value and units, centered horizontally
+            // Match value font with units
+            fontValue =
+                $.getMatchingFont(
+                    dc,
+                    mFontsNumbers,
+                    sw - 4,
+                    sh - 4 - labelHeight,
+                    valueText
+                ) as Graphics.FontType;
+        }
+
+        var valueHeight = dc.getFontHeight(fontValue);
+
+        if (isPortrait) {
+            // Draw label, value and units stacked vertically
+            startY = centerY - (labelHeight + valueHeight + unitHeight) / 2;
+            if (sh < labelHeight + valueHeight + unitHeight) {
+                // Label doesn't fit, so remove it and center the value and units text vertically
+                label = null;
+                labelHeight = 0;
+                hasLabel = false;
+                startY = centerY - (valueHeight + unitHeight) / 2;
+            }
+            if (sh < valueHeight + unitHeight) {
+                // Units don't fit, so remove them and center the value text vertically
+                units = null;
+                unitHeight = 0;
+                hasUnits = false;
+                startY = centerY - valueHeight / 2;
+            }
+        } else {
+            // Landscape
+            startY = centerY - (labelHeight + valueHeight) / 2;
+            if (sh < labelHeight + valueHeight) {
+                // Label doesn't fit, so remove it and center the value text vertically
+                label = null;
+                labelHeight = 0;
+                hasLabel = false;
+                startY = centerY - (valueHeight - 4) / 2;
+            }
+        }
+
+        var widthValue = dc.getTextWidthInPixels(valueOnly, fontValue);
+
+        if (isPortrait) {
+            // System.println([
+            //     "drawProportionalGrid: Portrait mode",
+            //     "sw:",
+            //     sw,
+            //     "sh:",
+            //     sh,
+            //     "labelHeight:",
+            //     labelHeight,
+            //     "valueHeight:",
+            //     valueHeight,
+            //     "unitHeight:",
+            //     unitHeight,
+            //     "valueOnly:",
+            //     valueOnly,
+            //     "units:",
+            //     units,
+            //     "hasLabel:",
+            //     hasLabel,
+            //     "hasUnits:",
+            //     hasUnits,
+            // ]);
+
+            // Draw value and units stacked vertically
+            // and only if it fits within the rectangle width:
+            // label+value+unit | label | label+value | value+unit | value
+
+            // First do the checks
+            if (widthValue >= sw - 4) {
+                // Truncate the value text to fit within the available width
+                valueOnly = truncateDecimals(dc, valueOnly, fontValue, sw - 4);
+                widthValue = dc.getTextWidthInPixels(valueOnly, fontValue);
+            }
+            // Will value fit?
+            hasValue = widthValue < sw - 4;
+            // Will units fit?
+            hasUnits = hasValue && hasUnits && widthUnits < sw - 4;
+            // Adjust the label position based on whether value and units were drawn
+            valueHeight = hasValue ? valueHeight : 0;
+            unitHeight = hasUnits ? unitHeight : 0;
+            startY = centerY - (labelHeight + valueHeight + unitHeight) / 2;
+
+            if (hasLabel) {
+                dc.drawText(
+                    centerX,
+                    startY,
+                    font,
+                    label,
+                    Graphics.TEXT_JUSTIFY_CENTER //| Graphics.TEXT_JUSTIFY_VCENTER
+                );
+            }
+            if (hasValue) {
+                dc.drawText(
+                    centerX,
+                    startY + labelHeight,
+                    fontValue,
+                    valueOnly,
+                    Graphics.TEXT_JUSTIFY_CENTER //| Graphics.TEXT_JUSTIFY_VCENTER
+                );
+                if (hasUnits) {
+                    dc.drawText(
+                        centerX,
+                        startY + labelHeight + valueHeight,
+                        font,
+                        units,
+                        Graphics.TEXT_JUSTIFY_CENTER //| Graphics.TEXT_JUSTIFY_VCENTER
+                    );
+                }
+            }
+            return;
+        } else {
+            // Landscape
+            // System.println([
+            //     "drawProportionalGrid: Landscape mode, labelHeight:",
+            //     labelHeight,
+            //     "valueHeight:",
+            //     valueHeight,
+            //     "unitHeight:",
+            //     unitHeight,
+            //     "valueOnly:",
+            //     valueOnly,
+            //     "units:",
+            //     units,
+            // ]);
+
+            if (label != null && label.length() > 0) {
+                dc.drawText(
+                    centerX,
+                    startY,
+                    font,
+                    label,
+                    Graphics.TEXT_JUSTIFY_CENTER //| Graphics.TEXT_JUSTIFY_VCENTER
+                );
+            }
+
+            // value and units exceed width -> remove units.
+            if (widthValue + widthUnits > sw - 4) {
+                widthUnits = 0;
+                units = "";
+
+                // Truncate the value text to fit within the available width
+                valueOnly = truncateDecimals(dc, valueOnly, fontValue, sw - 4);
+                widthValue = dc.getTextWidthInPixels(valueOnly, fontValue);
+            }
+            // Draw value + units centered horizontally
+            var totalWidth = widthValue + widthUnits;
+            var startX = centerX - totalWidth / 2;
+            // var justify = Graphics.TEXT_JUSTIFY_LEFT;
+            // if (widthUnits == 0) {
+            //     justify =
+            //         Graphics.TEXT_JUSTIFY_CENTER |
+            //         Graphics.TEXT_JUSTIFY_VCENTER;
+            // }
+            dc.drawText(
+                startX,
+                startY + labelHeight,
+                fontValue,
+                valueOnly,
+                Graphics.TEXT_JUSTIFY_LEFT
+            );
+            if (widthUnits > 0) {
+                dc.drawText(
+                    startX + widthValue,
+                    startY +
+                        labelHeight + // label and unit same fonts
+                        valueHeight -
+                        unitHeight -
+                        dc.getFontDescent(fontValue) +
+                        dc.getFontDescent(font),
+                    font,
+                    units,
+                    Graphics.TEXT_JUSTIFY_LEFT
+                );
+            }
+        }
+    }
+
+    // Helper function to truncate the value text to fit within the available width
+    function truncateDecimals(
+        dc as Graphics.Dc,
+        text as String?,
+        font as Graphics.FontType,
+        maxWidth as Number
+    ) as String {
+        var truncatedText = text;
+        if (truncatedText == null || truncatedText.length() == 0) {
+            return "";
+        }
+
+        var widthValue = dc.getTextWidthInPixels(truncatedText, font);
+        if (widthValue > maxWidth) {
+            var posDot = truncatedText.find(".");
+            if (posDot == null) {
+                return ""; // No dot found, return an empty string
+            }
+
+            truncatedText = truncatedText.substring(0, posDot);
+        }
+
+        return truncatedText;
+    }
+
+    //}
+
+    // Inside your View class...
+    function drawRadialGauges(dc) {
+        var centerX = dc.getWidth() / 2;
+        var centerY = dc.getHeight() / 2;
+
+        // 1. Define your array of ratios (e.g., 5 metrics)
+        // var ratios = [0.85, 0.42, 1.0, 0.15, 0.67];
+        var ratios = mProgressRatios; // Use the actual progress values from mProgressRatios
+        var numMetrics = ratios.size();
+
+        // 2. Center hub styling
+        var hubRadius = 15;
+        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(centerX, centerY, hubRadius);
+
+        // 3. Spacing setup
+        var baseRadius = hubRadius + 12; // Start just outside the hub
+        var ringSpacing = 16; // Distance between each arc layer
+        var dotRadius = 4; // Size of the indicator circle at the end
+
+        // Define the sweep direction (e.g., from 180° clockwise to 0°)
+        var startAngleDeg = 180;
+        var maxSweepDeg = 180; // A half-circle gauge. Change to 360 for full circles.
+
+        for (var i = 0; i < numMetrics; i++) {
+            var colorRatio = mProgressColors[i]; // Use the color corresponding to this metric
+            var ratio = ratios[i];
+
+            // Ensure ratio stays within bounds
+            if (ratio > 1.0) {
+                ratio = 1.0;
+            }
+            if (ratio < 0.0) {
+                ratio = 0.0;
+            }
+
+            // Calculate the unique radius for this specific layer
+            var currentRadius = baseRadius + i * ringSpacing;
+
+            // Calculate the end angle in degrees for dc.drawArc
+            // Because Garmin arcs go counter-clockwise, subtracting the sweep
+            // makes the arc grow clockwise from the left (180°).
+            var endAngleDeg = startAngleDeg - ratio * maxSweepDeg;
+
+            // --- Step A: Draw the Arc ---
+            dc.setPenWidth(2); // Adjust thickness as needed
+            dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+            // Optional: Draw a faint background track for context
+            dc.drawArc(
+                centerX,
+                centerY,
+                currentRadius,
+                Graphics.ARC_CLOCKWISE,
+                startAngleDeg,
+                startAngleDeg - maxSweepDeg
+            );
+
+            dc.setPenWidth(4); // Adjust thickness as needed
+            dc.setColor(colorRatio, Graphics.COLOR_TRANSPARENT); // Use the color corresponding to this metric
+            if (ratio > 0) {
+                dc.drawArc(
+                    centerX,
+                    centerY,
+                    currentRadius,
+                    Graphics.ARC_CLOCKWISE,
+                    startAngleDeg,
+                    endAngleDeg
+                );
+            }
+            dc.setPenWidth(1); // Reset pen width to default
+
+            // --- Step B: Calculate and Draw the Terminal Dot ---
+            // Convert the final degree angle to Radians for standard Math functions
+            var angleRad = endAngleDeg * (Math.PI / 180.0);
+
+            // Calculate X and Y offsets (negating Y because screen coordinates go down)
+            var dotX = centerX + currentRadius * Math.cos(angleRad);
+            var dotY = centerY - currentRadius * Math.sin(angleRad);
+
+            // Draw the small circle at the end of the arc
+            dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+            dc.fillCircle(dotX.toNumber(), dotY.toNumber(), dotRadius);
+        }
+    }
+
+    function drawTriangleGauges(dc) {
+        var width = dc.getWidth();
+        var height = dc.getHeight();
+        var centerX = width / 2;
+        var centerY = height / 2;
+
+        // 1. Setup your metrics (0.0 to 1.0)
+        // var ratios = [0.8, 0.5, 0.9, 0.3, 0.7, 0.4, 1.0, 0.2, 0.6, 0.95];
+        var ratios = mProgressRatios; // Use the actual progress values from mProgressRatios
+        var numMetrics = ratios.size();
+
+        System.println(["drawTriangleGauges: ratios:", ratios]);
+        // Calculate the angular width of each slice (in Radians)
+        var angleStep = (2 * Math.PI) / numMetrics;
+
+        // 2. Loop through each metric segment
+        for (var i = 0; i < numMetrics; i++) {
+            var colorRatio = mProgressColors[i]; // Use the color corresponding to this metric
+            var ratio = ratios[i];
+
+            // Target angles for the boundaries of this specific slice
+            var startAngle = i * angleStep;
+            var endAngle = (i + 1) * angleStep;
+
+            // 3. Find the maximum rectangular boundary distance for both angles
+            // This scales the circular distribution into a perfect outer rectangle.
+            var maxRadiusStart = getRectRadius(startAngle, width, height);
+            var maxRadiusEnd = getRectRadius(endAngle, width, height);
+
+            // Scale the radius dynamically by the metric's ratio
+            var currentRadiusStart = maxRadiusStart * ratio;
+            var currentRadiusEnd = maxRadiusEnd * ratio;
+
+            // 4. Calculate the two outer vertex points of the triangle
+            var pt1X = centerX + currentRadiusStart * Math.cos(startAngle);
+            var pt1Y = centerY - currentRadiusStart * Math.sin(startAngle); // Negate Y
+
+            var pt2X = centerX + currentRadiusEnd * Math.cos(endAngle);
+            var pt2Y = centerY - currentRadiusEnd * Math.sin(endAngle); // Negate Y
+
+            // 5. Draw the metric triangle
+            // Vertex 0 is always the center hub (centerX, centerY)
+            dc.setColor(colorRatio, Graphics.COLOR_TRANSPARENT);
+            dc.fillPolygon([
+                [centerX, centerY],
+                [pt1X.toNumber(), pt1Y.toNumber()],
+                [pt2X.toNumber(), pt2Y.toNumber()],
+            ]);
+
+            // Optional: Draw a thin wireframe border around the slices for definition
+            dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+            dc.drawLine(centerX, centerY, pt1X.toNumber(), pt1Y.toNumber());
+            dc.drawLine(
+                pt1X.toNumber(),
+                pt1Y.toNumber(),
+                pt2X.toNumber(),
+                pt2Y.toNumber()
+            );
+        }
+    }
+
+    // --- Helper: Intersection of an angle with a bounding rectangle ---
+    // This projects a circle outward until it flush-fits a rectangle
+    function getRectRadius(angle, w, h) {
+        var absCos = Math.cos(angle).abs();
+        var absSin = Math.sin(angle).abs();
+
+        // Determine if the ray hits the top/bottom or left/right walls first
+        if ((w / 2.0) * absSin <= (h / 2.0) * absCos) {
+            return w / 2.0 / absCos;
+        } else {
+            return h / 2.0 / absSin;
+        }
+    }
+
+    // --- Helper: Cycle colors for visual distinction ---
+    function getMetricColor(index) {
+        var colors = [
+            Graphics.COLOR_RED,
+            Graphics.COLOR_BLUE,
+            Graphics.COLOR_GREEN,
+            Graphics.COLOR_YELLOW,
+            Graphics.COLOR_ORANGE,
+            Graphics.COLOR_PURPLE,
+            Graphics.COLOR_PINK,
+            Graphics.COLOR_DK_GREEN,
+            Graphics.COLOR_LT_GRAY,
+            Graphics.COLOR_DK_BLUE,
+        ];
+        return colors[index % colors.size()];
     }
 
     function getDynamicColor(progress as Float?) as Graphics.ColorType {
@@ -338,6 +1074,7 @@ class GoalsView extends WatchUi.DataField {
         var colors = getThemeColor(mDarkBackground);
         var visualProgress =
             progress > 1.0 ? 1.0 : progress < 0.0 ? 0.0 : progress;
+        var hasAttention = mProgress.hasActiveAlert(fieldType);
 
         dc.setPenWidth(1);
         // Draw the background "Empty" track
@@ -352,9 +1089,25 @@ class GoalsView extends WatchUi.DataField {
             dc.fillRoundedRectangle(x, y + h - fillHeight, w, fillHeight, 4);
         }
 
+        if (mFieldDivider > 0) {
+            // Draw a horizontal divider line at the specified height from the bottom
+            var dividerY = y + h - ((h * mFieldDivider) / 100).toNumber();
+            if (fillHeight != dividerY - y) {
+                // Only draw the divider if it is not exactly at the fill height
+                dc.setColor(colors[:divider], Graphics.COLOR_TRANSPARENT);
+                dc.drawLine(x, dividerY, x + w, dividerY);
+            }
+        }
+
         // draw a border around the bar for better visibility
-        dc.setColor(colors[:border], Graphics.COLOR_TRANSPARENT);
+        if (hasAttention) {
+            dc.setColor(colors[:borderAttention], Graphics.COLOR_TRANSPARENT);
+            dc.setPenWidth(2);
+        } else {
+            dc.setColor(colors[:border], Graphics.COLOR_TRANSPARENT);
+        }
         dc.drawRoundedRectangle(x, y, w, h, 4);
+        dc.setPenWidth(1);
 
         // Embedded Checkmark Overlay (If Goal is met/exceeded)
         if (progress >= 1.0) {
@@ -380,22 +1133,26 @@ class GoalsView extends WatchUi.DataField {
                 cx + checkSize,
                 cy - checkSize
             );
+            dc.setPenWidth(1);
         }
-        if ($.gShowLabels || mShowDetails) {
+        if (mFieldShowLabels || mShowDetails || hasAttention) {
             // Label centered at the bottom of the bar when paused
             var tx = x + w / 2;
             var ty = y + h - dc.getFontHeight(Graphics.FONT_XTINY) - 2;
-            var label = getFieldLabel(fieldType);
+            var textLabel = getFieldLabel(fieldType);
+            if (hasAttention) {
+                textLabel = "EAT";
+            }
 
             var maxBarTextWidth = w - 4; // Leave a 2px padding buffer on each side
             var fitCount = $.getMaxCharactersThatFit(
                 dc,
-                label,
+                textLabel,
                 Graphics.FONT_XTINY,
                 maxBarTextWidth
             );
 
-            if (label.length() <= fitCount) {
+            if (textLabel.length() <= fitCount) {
                 var currentUnderlyingColor = trackColor; // Default track background
                 // Check if the text is submerged in the filled part of the bar
 
@@ -423,14 +1180,14 @@ class GoalsView extends WatchUi.DataField {
                     tx,
                     ty,
                     Graphics.FONT_XTINY,
-                    label,
+                    textLabel,
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER
                 );
             } else {
                 // Draw text vertical
                 drawStackedVerticalLabel(
                     dc,
-                    label,
+                    textLabel,
                     Graphics.FONT_XTINY,
                     x,
                     w,
@@ -492,6 +1249,9 @@ class GoalsView extends WatchUi.DataField {
         }
     }
 
+    hidden var mMaxPower as Float = 0.0f; // Store the maximum power value for the power gauge
+    hidden var mMaxSpeed as Float = 0.0f; // Store the maximum speed value for the speed gauge
+
     hidden function drawHorizontalProgressBar(
         dc as Graphics.Dc,
         x as Number,
@@ -508,6 +1268,7 @@ class GoalsView extends WatchUi.DataField {
         var colors = getThemeColor(mDarkBackground);
         var visualProgress =
             progress > 1.0 ? 1.0 : progress < 0.0 ? 0.0 : progress;
+        var hasAttention = mProgress.hasActiveAlert(fieldType);
 
         // 1. Draw the empty background track
         var trackColor = colors[:track];
@@ -523,9 +1284,25 @@ class GoalsView extends WatchUi.DataField {
             dc.fillRoundedRectangle(x, y, fillWidth, h, 4);
         }
 
+        if (mFieldDivider > 0) {
+            // Draw a vertical divider line at the specified position from the left
+            var dividerX = x + ((w * mFieldDivider) / 100).toNumber();
+            if (fillRightX != dividerX) {
+                // Only draw the divider if it is not exactly at the fill width
+                dc.setColor(colors[:divider], Graphics.COLOR_TRANSPARENT);
+                dc.drawLine(dividerX, y, dividerX, y + h);
+            }
+        }
+
         // draw a border around the bar for better visibility
-        dc.setColor(colors[:border], Graphics.COLOR_TRANSPARENT);
+        if (hasAttention) {
+            dc.setColor(colors[:borderAttention], Graphics.COLOR_TRANSPARENT);
+            dc.setPenWidth(2);
+        } else {
+            dc.setColor(colors[:border], Graphics.COLOR_TRANSPARENT);
+        }
         dc.drawRoundedRectangle(x, y, w, h, 4);
+        dc.setPenWidth(1);
 
         // 5. Inline Checkmark (Rendered at the far right edge of the bar)
         // Inline Checkmark (Centered at the far right edge of the horizontal bar)
@@ -547,10 +1324,14 @@ class GoalsView extends WatchUi.DataField {
                 cx + checkSize,
                 cy - checkSize
             );
+            dc.setPenWidth(1);
         }
 
-        if ($.gShowLabels || mShowDetails) {
+        if (mFieldShowLabels || mShowDetails || hasAttention) {
             var textLabel = getFieldLabelWide(fieldType);
+            if (hasAttention) {
+                textLabel += " EAT!";
+            }
             var font = Graphics.FONT_XTINY;
 
             // 3. Draw the horizontal text character-by-character
@@ -575,8 +1356,7 @@ class GoalsView extends WatchUi.DataField {
                     underlyingColor = barColor; // Letter is sitting on top of the color fill
                 }
 
-                // Apply your HSP formula logic
-                if (isColorLight(underlyingColor)) {
+                if ($.isColorLight(underlyingColor)) {
                     dc.setColor(
                         Graphics.COLOR_BLACK,
                         Graphics.COLOR_TRANSPARENT
@@ -600,37 +1380,381 @@ class GoalsView extends WatchUi.DataField {
                 // Advance the X cursor forward by the letter's width for the next character
                 currentX += charWidth;
             }
+
+            // TEST
+            var showValues =
+                fieldType == FTDistanceOrNavDestination ||
+                fieldType == FTDistanceToDestination ||
+                fieldType == FTDistanceToNext;
+            // Only show values if the progress is less than 100% and the user has requested to show values
+            if (
+                (progress < 1.0 && mFieldShowValues && mShowDetails) ||
+                showValues
+            ) {
+                var textValue = getFormattedValue(
+                    mProgress.getProgressFieldValue(fieldType),
+                    fieldType,
+                    false
+                );
+
+                // Position text: Centered vertically inside the bar height, with a 6px right margin
+                var fontValue = Graphics.FONT_XTINY;
+                var fontValueHeight = dc.getFontHeight(fontValue);
+                var textValueY = y + (h - fontValueHeight) / 2;
+                var startValueX = x + w - 6; // Right-align with a 6px margin from the right edge
+
+                // Draw the value text character-by-character from right to left
+                for (var i = textValue.length() - 1; i >= 0; i--) {
+                    var charStr = textValue.substring(i, i + 1);
+                    var charWidth = dc.getTextWidthInPixels(charStr, fontValue);
+
+                    // Determine the horizontal midpoint of this specific letter
+                    var charMidX = startValueX - charWidth / 2;
+
+                    // Contrast Check: Is this letter's midpoint inside the filled color block?
+                    var underlyingColor = trackColor;
+                    if (fillWidth > 0 && charMidX <= fillRightX) {
+                        underlyingColor = barColor; // Letter is sitting on top of the color fill
+                    }
+
+                    if ($.isColorLight(underlyingColor)) {
+                        dc.setColor(
+                            Graphics.COLOR_BLACK,
+                            Graphics.COLOR_TRANSPARENT
+                        );
+                    } else {
+                        dc.setColor(
+                            Graphics.COLOR_WHITE,
+                            Graphics.COLOR_TRANSPARENT
+                        );
+                    }
+
+                    // Draw the single character (use Left justification so they chain properly)
+                    dc.drawText(
+                        startValueX - charWidth,
+                        textValueY,
+                        fontValue,
+                        charStr,
+                        Graphics.TEXT_JUSTIFY_LEFT
+                    );
+
+                    // Move the starting X position leftward for the next character
+                    startValueX -= charWidth;
+                }
+                //}
+            }
+        } // mFieldShowLabels || mShowDetails)
+    }
+
+    hidden var rad2degFactor as Float = 180 / Math.PI; // Conversion factor from radians to degrees
+
+    // Parameters:
+    // dc - The device context
+    // cx, cy - Center coordinates of the gauge
+    // r - Radius of the circle
+    // currentSpeed - Current speed value
+    // avgSpeed - Average speed value
+    // maxSpeed - Maximum speed value
+    // targetSpeed - The target speed (acts as the 100% mark at 90 degrees right)
+    function drawSpeedGauge(
+        dc,
+        cx,
+        cy,
+        baseRadius,
+        currentSpeed,
+        avgSpeed,
+        maxSpeed,
+        targetSpeed
+    ) {
+        if (targetSpeed == null || targetSpeed <= 0) {
+            targetSpeed = 1.0;
         }
 
-        // TODO fix color contrast for the value text when it is over the filled part of the bar
-        if (progress < 1.0 && $.gShowValues && mShowDetails) {
-            // Show actual values for the fieldType if requested using the same color as last character for the label text
-            var idxField = mProgressFields.indexOf(fieldType);
-            if (idxField >= 0 && idxField < mProgressFieldValues.size()) {
-                var font = Graphics.FONT_XTINY;
-                var fontHeight = dc.getFontHeight(font);
-                var textY = y + (h - fontHeight) / 2;
-                var textX = x + w - 6; // Right-align with a 6px margin from the right edge
-                dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-                dc.drawText(
-                    textX,
-                    textY,
-                    font,
-                    getFormattedValue(
-                        mProgressFieldValues[idxField],
-                        fieldType
-                    ),
-                    Graphics.TEXT_JUSTIFY_RIGHT
+        // --- Dynamic Radius Scaling ---
+        var currentRadius = baseRadius;
+        var percentage = currentSpeed / targetSpeed;
+
+        if (percentage > 1.0) {
+            // Calculate how far past the target they are (e.g., 1.08 means 8% over)
+            var excessPercentage = percentage - 1.0;
+
+            // Scale factor: grows the radius by 50% of the excess percentage.
+            // (An 8% over-speed will grow the radius by 4%)
+            var scaleFactor = 1.0 + excessPercentage * 0.5;
+
+            currentRadius = baseRadius * scaleFactor;
+        }
+
+        System.println(
+            "drawSpeedGauge: currentSpeed=" +
+                currentSpeed +
+                ", avgSpeed=" +
+                avgSpeed +
+                ", maxSpeed=" +
+                maxSpeed +
+                ", targetSpeed=" +
+                targetSpeed
+        );
+        // 1. Draw the base semi-circle (from 180 degrees to 0 degrees)
+        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(1);
+        // Draw arc: cx, cy, radius, graphics_arc_direction, start_angle, end_angle
+        // In Connect IQ, 0deg is right, 90deg is top. We draw from left (180) to right (0) clockwise.
+        dc.drawArc(cx, cy, currentRadius, Graphics.ARC_CLOCKWISE, 180, 0);
+
+        // Draw AVERAGE Speed Indication
+        if (avgSpeed > 0) {
+            drawAverageArc(dc, cx, cy, currentRadius, avgSpeed, targetSpeed);
+        }
+        // Draw MAXIMUM Speed Indication (A small tick mark or dot)
+        if (maxSpeed > 0) {
+            drawMaxSpeedIndicator(
+                dc,
+                cx,
+                cy,
+                currentRadius,
+                maxSpeed,
+                targetSpeed
+            );
+        }
+
+        // Draw CURRENT Speed (Arrow/line from center to circle)
+        var curDegrees = speedToDegrees(currentSpeed, targetSpeed);
+
+        dc.setPenWidth(10);
+        dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.drawArc(
+            cx,
+            cy,
+            currentRadius - 10,
+            Graphics.ARC_CLOCKWISE,
+            180,
+            curDegrees
+        ); // Convert radians to degrees for drawArc
+
+        var curPoint = point2DOnCircle(cx, cy, currentRadius, curDegrees);
+        var curLeft = point2DOnCircle(
+            cx,
+            cy,
+            currentRadius * 0.9,
+            curDegrees - 2
+        );
+        var curRight = point2DOnCircle(
+            cx,
+            cy,
+            currentRadius * 0.9,
+            curDegrees + 2
+        );
+        var centerPoint = [cx, cy];
+        dc.setColor(Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(1);
+        dc.fillPolygon([centerPoint, curLeft, curPoint, curRight]);
+        //dc.drawLine(cx, cy, curPoint[0], curPoint[1]);
+
+        // Optional: Draw a small center hub to clean up the line origin
+        dc.fillCircle(cx, cy, 5);
+    }
+
+    // keep in mind that Garmin's drawing system natively uses degrees, but its 0° starts at the 3 o'clock position (pointing right)
+    // and goes counter-clockwise. Since your code maps 180° down to 0°, your gauge will correctly sweep clockwise from the left side to the right side!
+    // --- Helper to convert speed to angles (in Degrees) ---
+    // 0 speed = 180 deg
+    // Target speed = 0 deg
+    function speedToDegrees(speed, target) {
+        if (target == null || target <= 0) {
+            target = 1.0;
+        }
+        var percentage = speed / target;
+        if (percentage > 1.1) {
+            percentage = 1.1;
+        } // Cap slightly past target so it doesn't spin infinitely
+        else if (percentage < 0) {
+            percentage = 0;
+        }
+
+        // Map 0 -> 1 to 180 -> 0 degrees (Clockwise)
+        return 180.0 - percentage * 180.0;
+    }
+
+    function drawMaxSpeedIndicator(dc, cx, cy, r, maxSpeed, targetSpeed) {
+        var maxDegrees = speedToDegrees(maxSpeed, targetSpeed);
+        var maxPoint = point2DOnCircle(cx, cy, r, maxDegrees);
+        dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(maxPoint[0], maxPoint[1], 5);
+    }
+
+    function drawAverageArc(dc, cx, cy, r, avgSpeed, targetSpeed) {
+        var avgDegrees = speedToDegrees(avgSpeed, targetSpeed);
+
+        dc.setPenWidth(20);
+        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.drawArc(cx, cy, r - 20, Graphics.ARC_CLOCKWISE, 180, avgDegrees); // Convert radians to degrees for drawArc
+        // dc.setPenWidth(18);
+        // dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        // dc.drawArc(
+        //     cx,
+        //     cy,
+        //     r - 20,
+        //     Graphics.ARC_CLOCKWISE,
+        //     180,
+        //     avgAngle * rad2degFactor
+        // );
+    }
+
+    function drawTenColumnTargetRing(
+        dc,
+        cX as Number,
+        cY as Number,
+        outerRadius as Number,
+        progressArray as Array<Float>
+    ) as Void {
+        var numColumns = 10;
+        var columnThickness = 4; // Thin, high-density professional lines
+        var columnSpacing = 2; // 2-pixel gap between data lanes
+
+        // 360-degree full circles look spectacular for clean column charts.
+        // We start at the top (90°) and draw clockwise.
+        var startAngle = 90;
+
+        // Loop from index 0 (innermost column) to index 9 (outermost column)
+        for (var i = 0; i < numColumns; i++) {
+            // Calculate radius moving from inside out
+            var currentRadius =
+                outerRadius -
+                (numColumns - 1 - i) * (columnThickness + columnSpacing);
+
+            // 1. Draw the underlying muted column track (0% track)
+            dc.setColor(0x222222, Graphics.COLOR_TRANSPARENT); // Very dark subtle gray track
+            dc.setPenWidth(columnThickness);
+            dc.drawCircle(cX, cY, currentRadius);
+
+            // 2. Fetch progress state and clamp safely
+            var progress = progressArray[i];
+            if (progress == null || progress < 0.0f) {
+                progress = 0.0f;
+            } else if (progress > 1.0f) {
+                progress = 1.0f;
+            }
+
+            if (progress > 0.001f) {
+                // Calculate exact sweeping angle based on percentage
+                var sweepAngle = (progress * 360).toNumber();
+                var endAngle = startAngle - sweepAngle;
+
+                // Set dynamic color based on progress tier or a column palette array
+                dc.setColor(
+                    getColumnColorPalette(i),
+                    Graphics.COLOR_TRANSPARENT
+                );
+                dc.drawArc(
+                    cX,
+                    cY,
+                    currentRadius,
+                    Graphics.ARC_CLOCKWISE,
+                    startAngle,
+                    endAngle
                 );
             }
         }
+
+        dc.setPenWidth(1); // Reset standard pen width
     }
+
+    // A clean cyber-grid color array going from deep blues to bright neon accents
+    function getColumnColorPalette(index as Number) as Number {
+        var palette = [
+            0x0055ff, // 0: Innermost
+            0x00aaff, // 1
+            0x00ffbb, // 2
+            0x00ff55, // 3
+            0x55ff00, // 4
+            0xaaff00, // 5
+            0xffff00, // 6
+            0xffaa00, // 7
+            0xff5500, // 8
+            0xff0055, // 9: Outermost
+        ];
+        return palette[index];
+    }
+
+    using Toybox.Graphics;
+    using Toybox.Math;
+
+    function drawSpokeDashboard(
+        dc,
+        cX as Number,
+        cY as Number,
+        maxRadius as Number,
+        numSpokes as Number,
+        progressArray as Array<Float>
+    ) as Void {
+        var angleStep = (360 / numSpokes).toNumber(); // 360 degrees / 10 columns
+        var minRadius = 25; // Leaving a hollow hub in the middle for your text/speed!
+
+        dc.setPenWidth(20); // Makes the columns chunky and highly visible while riding
+
+        for (var i = 0; i < numSpokes; i++) {
+            // Calculate the direction angle for this specific column in radians
+            var degrees = i * angleStep;
+            var rad = degrees * (Math.PI / 180.0f);
+
+            var cosVal = Math.cos(rad);
+            var sinVal = Math.sin(rad);
+
+            // 1. Calculate where the column starts (the inner hub border)
+            var startX = (cX + minRadius * cosVal).toNumber();
+            var startY = (cY + minRadius * sinVal).toNumber();
+
+            // 2. Draw the background track (representing the 100% goal line)
+            var maxTargetX = (cX + maxRadius * cosVal).toNumber();
+            var maxTargetY = (cY + maxRadius * sinVal).toNumber();
+
+            dc.setColor(0x222222, Graphics.COLOR_TRANSPARENT); // Subtle dark track
+            dc.drawLine(startX, startY, maxTargetX, maxTargetY);
+
+            // 3. Calculate and overlay the active progress column length
+            var progress = progressArray[i];
+            if (progress == null || progress < 0.0f) {
+                progress = 0.0f;
+            } else if (progress > 1.0f) {
+                progress = 1.0f;
+            }
+
+            if (progress > 0.01f) {
+                // Calculate current length between the inner hub and max radius
+                var activeRange = maxRadius - minRadius;
+                var currentRadius = minRadius + activeRange * progress;
+
+                var progressX = (cX + currentRadius * cosVal).toNumber();
+                var progressY = (cY + currentRadius * sinVal).toNumber();
+
+                // Apply your custom styling color to the active column spoke
+                dc.setColor(getSpokeColor(i), Graphics.COLOR_TRANSPARENT);
+                dc.drawLine(startX, startY, progressX, progressY);
+            }
+        }
+
+        dc.setPenWidth(1); // Reset canvas line settings
+    }
+
+    function getSpokeColor(index as Number) as Number {
+        var colors = [
+            0x00aaff, 0x00ff55, 0xffff00, 0xff5500, 0xaa00ff, 0x0055ff,
+            0x00ffbb, 0x55ff00, 0xffaa00, 0xff0055,
+        ];
+        return colors[index];
+    }
+
     hidden function getFormattedValue(
         value as Float or Number or Null,
-        fieldType as FieldType
+        fieldType as FieldType,
+        zeroIsEmpty as Boolean
     ) as String {
         if (value == null) {
             value = 0.0f;
+        }
+        if (zeroIsEmpty && value == 0.0f) {
+            return "";
         }
 
         switch (fieldType) {
@@ -638,28 +1762,29 @@ class GoalsView extends WatchUi.DataField {
             case FTDistanceToDestination:
             case FTDistanceToNext:
             case FTDistanceOrNavDestination:
-                return (value / 1000.0f).format("%.1f") + " km"; // Convert meters to kilometers
+                return (value / 1000.0f).format("%.1f") + " KM"; // Convert meters to kilometers
             case FTCalories:
-                return value.format("%.0f") + " kcal"; // Calories are already in kcal
+                return value.format("%.0f") + " KCAL"; // Calories are already in kcal
             case FTAverageHeartRateZone:
             case FTHeartRateZone:
-                return value.format("%.0f"); // Number
+                // System.println(["getFormattedValue: Heart Rate Zone:", value]);
+                return value.format("%.1f");
             case FTPower:
             case FTAveragePower:
             case FTNormalizedPower:
                 return value.format("%.0f") + " W"; // Power is already in watts
             case FTSpeed:
             case FTAverageSpeed:
-                return (value * 3.6f).format("%.1f") + " km/h"; // Convert m/s to km/h
+                return value.format("%.1f") + " KM/H";
             case FTAverageCadence:
             case FTCadence:
-                return value.format("%.0f") + " rpm"; // Cadence is already in rpm
+                return value.format("%.0f") + " RPM"; // Cadence is already in rpm
             case FTTotalAscent:
             case FTTotalDescent:
-                return value.format("%.0f") + " m"; // Ascent/Descent is already in meters
+                return value.format("%.0f") + " M"; // Ascent/Descent is already in meters
             case FTMinutesElapsed:
-                // TODO convert to HH:MM:SS
-                return (value / 60.0f).format("%.1f") + " min"; // Convert seconds to minutes
+                // value is in minutes, convert to seconds for HH:MM:SS formatting
+                return $.formatSecondsToHMS((value * 60).toNumber()); // Convert minutes to HH:MM:SS
             case FTIntensityFactor:
                 return value.format("%.2f"); // Intensity Factor is unitless
             case FTTrainingStressScore:
@@ -696,8 +1821,9 @@ class GoalsView extends WatchUi.DataField {
         var sin = SIN_TABLE[angleInt] as Float;
         var cos = COS_TABLE[angleInt] as Float;
 
-        var xP = radius.toFloat() * cos + x;
-        var yP = radius.toFloat() * sin + y;
+        var xP = x + radius.toFloat() * cos;
+        // In computer graphics, the Y-axis is inverted (increasing Y goes down), so we subtract the sine component
+        var yP = y - radius.toFloat() * sin;
 
         return [xP.toNumber(), yP.toNumber()] as Point2D;
     }
@@ -711,15 +1837,15 @@ class GoalsView extends WatchUi.DataField {
             case FTCalories:
                 return "CAL";
             case FTHeartRateZone:
-                if ($.gHeartRate.getIsInWarmUp()) {
-                    return "RZ0";
-                }
-                return "RZ" + $.gTargetHeartRateZone.format("%d");
+                // if ($.gHeartRate.getIsInWarmUp()) {
+                //     return "RZ0";
+                // }
+                return "Z" + $.gTargetHeartRateZone.format("%0.1f");
             case FTAverageHeartRateZone:
-                if ($.gHeartRate.getIsInWarmUp()) {
-                    return "øZ0";
-                }
-                return "øZ" + $.gTargetHeartRateZone.format("%d");
+                // if ($.gHeartRate.getIsInWarmUp()) {
+                //     return "øZ0";
+                // }
+                return "øZ" + $.gTargetAverageHeartRateZone.format("%d");
             case FTPower:
                 return "PWR";
             case FTAveragePower:
@@ -787,12 +1913,20 @@ class GoalsView extends WatchUi.DataField {
             case FTTotalDescent:
                 return "TOTAL DESCENT";
             case FTMinutesElapsed:
-                return "MINUTES ELAPSED";
+                return "TIME ELAPSED";
+            case FTAverageHeartRateZone:
+                // if ($.gHeartRate.getIsInWarmUp()) {
+                //     return "AVG HRZ WARMUP";
+                // }
+                return (
+                    "AVG HEARTRATEZONE " +
+                    $.gTargetAverageHeartRateZone.format("%0.1f")
+                );
             case FTHeartRateZone:
-                if ($.gHeartRate.getIsInWarmUp()) {
-                    return "HEARTRATEZONE WARMUP";
-                }
-                return "HEARTRATEZONE " + $.gTargetHeartRateZone.format("%0d");
+                // if ($.gHeartRate.getIsInWarmUp()) {
+                //     return "HRZ WARMUP";
+                // }
+                return "HEARTRATEZONE " + $.gTargetHeartRateZone.format("%.1f");
             case FTDistanceToDestination:
                 return "DISTANCE TO DEST";
             case FTDistanceToNext:
@@ -806,7 +1940,7 @@ class GoalsView extends WatchUi.DataField {
             case FTIntensityFactor:
                 return "INTENSITY FACTOR";
             case FTTrainingStressScore:
-                return "TRAINING STRESS SCORE";
+                return "TRAINING STRESSSCORE";
             default:
                 return "";
         }
@@ -818,14 +1952,22 @@ class GoalsView extends WatchUi.DataField {
     const COLOR_GAINSBORO = 0xdcdcdc; // 86% Brightness - Safe, solid background track
     const COLOR_SILVER_LIGHT = 0xd3d3d3; // 83% Brightness - Noticeably lighter than standard Garmin Lt Gray
 
+    const COLOR_ELECTRIC_BLUE = 0x00a8ff;
     function getThemeColor(darkBackground) as Dictionary {
         return {
             :border => darkBackground
                 ? COLOR_SILVER_LIGHT
                 : Graphics.COLOR_DK_GRAY,
-            :track => darkBackground
-                ? Graphics.COLOR_DK_GRAY
-                : COLOR_PLATINUM,
+            :track => darkBackground ? Graphics.COLOR_DK_GRAY : COLOR_PLATINUM,
+            :divider => darkBackground
+                ? Graphics.COLOR_BLACK
+                : Graphics.COLOR_WHITE,
+            :borderAttention => darkBackground
+                ? COLOR_ALABASTER
+                : COLOR_ELECTRIC_BLUE,
+            :text => darkBackground
+                ? Graphics.COLOR_WHITE
+                : Graphics.COLOR_BLACK,
         };
     }
 }

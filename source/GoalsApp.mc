@@ -41,55 +41,132 @@ class GoalsApp extends Application.AppBase {
             var reset = Storage.getValue("resetDefaults");
             if (reset == null || (reset as Boolean)) {
                 Storage.setValue("resetDefaults", false);
-                Storage.setValue("show_labels", false);
+                // Storage.setValue("show_labels", false);
                 Storage.setValue("demo", false);
                 Storage.setValue("cadence_counter", 3);
-                Storage.setValue("gap_columns_horizontal", 8);
-                Storage.setValue("gap_columns_vertical", 8);
+                Storage.setValue("power_per_seconds", 3);
+                Storage.setValue("hsp_darklight_breakpoint", 127.5);
+                Storage.setValue("hsp_showvalue", false);
 
                 Storage.setValue(
-                    "show_fields",
+                    "show_one_field",
                     [
-                        FLVertical,
-                        FTDistanceOrNavDestination,
+                        FLHorizontal, // layout
+                        true, // show labels
+                        true, // show values
+                        4, // gap
+                        80, // divider at
+                        FTDistance,
+                        FTMinutesElapsed,
+                        FTCalories,
+                        FTTrainingStressScore,
+                        FTAverageSpeed,
+                        FTAverageCadence,
+                        FTAveragePower,
+                        FTAverageHeartRateZone,
+                        FTNormalizedPower,
+                        FTIntensityFactor,
+
+                    ] as Array<Numeric or FieldLayout or Boolean>
+                );
+                Storage.setValue(
+                    "show_large_field",
+                    [
+                        FLProportional, // layout
+                        false, // show labels
+                        false, // show values
+                        8, // gap
+                        80, // divider at
+                        FTDistance,
+                        FTMinutesElapsed,
+                        FTCalories,
                         FTTrainingStressScore,
                         FTSpeed,
-                        FTPower,                        
                         FTCadence,
+                        FTPower,
                         FTHeartRateZone,
-                    ] as Array<Numeric or FieldLayout>
+                    ] as Array<Numeric or FieldLayout or Boolean>
+                );
+                Storage.setValue(
+                    "show_wide_field",
+                    [
+                        FLVertical, // layout
+                        true, // show labels
+                        false, // show values
+                        8, // gap
+                        80, // divider at
+                        FTDistance,
+                        FTMinutesElapsed,
+                        FTCalories,
+                        FTTrainingStressScore,
+                        FTSpeed,
+                        FTCadence,
+                        FTPower,
+                        FTHeartRateZone,
+                    ] as Array<Numeric or FieldLayout or Boolean>
+                );
+                Storage.setValue(
+                    "show_small_field",
+                    [
+                        FLProportional, // layout
+                        false, // show labels
+                        false, // show values
+                        1, // gap
+                        80, // divider at
+                        FTDistance,
+                        FTMinutesElapsed,
+                        FTCalories,
+                        FTTrainingStressScore,
+                        FTSpeed,
+                        FTCadence,
+                        FTPower,
+                        FTHeartRateZone,
+                    ] as Array<Numeric or FieldLayout or Boolean>
                 );
 
-                Storage.setValue("target_distance", 150); // km
-                Storage.setValue("target_calories", 2000); // calories
-                Storage.setValue("target_power", 0); // watts
-                Storage.setValue("target_average_power", 200); // watts
-                Storage.setValue("target_speed", 30); // km/h
-                Storage.setValue("target_average_speed", 28); // km/h
-                Storage.setValue("target_average_cadence", 90); // rpm
-                Storage.setValue("target_normalized_power", 220); // watts
-                Storage.setValue("target_total_ascent", 300); // meters
-                Storage.setValue("target_total_descent", 300); // meters
-                Storage.setValue("target_minutes_elapsed", 300); // minutes
-                Storage.setValue("target_heart_rate_zone", 2); // zone
-                Storage.setValue("target_intensity_factor", 0.8); // IF
-                Storage.setValue("target_training_stress_score", 100); // TSS
-                Storage.setValue("target_cadence", 90); // rpm
+                // Init for casual scenario 80km
+                Storage.setValue("preset_distance", 80); // km
+                Storage.setValue("preset_duration", 0); // minutes
+                Storage.setValue("preset_suffer_factor", 1.0); // calories
+                $.applyPreset("preset_casual"); 
+
+                Storage.setValue("alert_calories_window", 700); // calories loop
+                Storage.setValue("alert_calories_sound", false); // sound
+                Storage.setValue("alert_timeelapsed_window", 0); // minutes
+                Storage.setValue("alert_timeelapsed_sound", false); // sound
+                Storage.setValue("alert_displaytime_sec", 10); // seconds
             }
 
             // $.gDebug = $.getStorageValue("debug", $.gDebug) as Boolean;
 
-            var showFields =
-                $.getStorageValue("show_fields", [$.gShowFieldsArraySize]) as
-                Array<Numeric or FieldLayout>;
+            var show_OneField =
+                $.getStorageValue("show_one_field", [$.gShowFieldsArraySize]) as
+                Array<Numeric or Boolean or FieldLayout>;
+            var show_LargeField =
+                $.getStorageValue("show_large_field", [
+                    $.gShowFieldsArraySize,
+                ]) as Array<Numeric or Boolean or FieldLayout>;
+            var show_WideField =
+                $.getStorageValue("show_wide_field", [
+                    $.gShowFieldsArraySize,
+                ]) as Array<Numeric or Boolean or FieldLayout>;
+            var show_SmallField =
+                $.getStorageValue("show_small_field", [
+                    $.gShowFieldsArraySize,
+                ]) as Array<Numeric or Boolean or FieldLayout>;
 
-            if ($.ensureArraySize(showFields, $.gShowFieldsArraySize, 0)) {
-                $.setStorageValueOrArray("show_fields", showFields);
+            if ($.ensureArraySize(show_OneField, $.gShowFieldsArraySize, 0)) {
+                $.setStorageValueOrArray("show_one_field", show_OneField);
             }
-            $.gShowLabels =
-                $.getStorageValue("show_labels", $.gShowLabels) as Boolean;
-            $.gShowValues =
-                $.getStorageValue("show_values", $.gShowValues) as Boolean;
+            if ($.ensureArraySize(show_LargeField, $.gShowFieldsArraySize, 0)) {
+                $.setStorageValueOrArray("show_large_field", show_LargeField);
+            }
+            if ($.ensureArraySize(show_WideField, $.gShowFieldsArraySize, 0)) {
+                $.setStorageValueOrArray("show_wide_field", show_WideField);
+            }
+            if ($.ensureArraySize(show_SmallField, $.gShowFieldsArraySize, 0)) {
+                $.setStorageValueOrArray("show_small_field", show_SmallField);
+            }
 
             $.gDemo = $.getStorageValue("demo", false) as Boolean;
             $.logInfo(["Demo mode:", $.gDemo]);
@@ -100,12 +177,18 @@ class GoalsApp extends Application.AppBase {
             $.gCadenceCounter =
                 $.getStorageValue("cadence_counter", $.gCadenceCounter) as
                 Number;
-            $.gGapColumnsHorizontal =
-                $.getStorageValue("gap_columns_horizontal", $.gGapColumnsHorizontal) as
+            
+            var powerPerSeconds =
+                $.getStorageValue("power_per_seconds", $.gPowerPerSec) as
                 Number;
-            $.gGapColumnsVertical =
-                $.getStorageValue("gap_columns_vertical", $.gGapColumnsVertical) as
-                Number;    
+            $.gPowerPerSec.setPowerPerSec(powerPerSeconds);
+
+            $.gHspDarklightBreakpoint =
+                $.getStorageValue("hsp_darklight_breakpoint", $.gHspDarklightBreakpoint) as
+                Float;
+            $.gHspShowValue =
+                $.getStorageValue("hsp_showvalue", $.gHspShowValue) as
+                Boolean;
 
             $.gTargetDistance =
                 $.getStorageValue("target_distance", $.gTargetDistance) as
@@ -124,6 +207,10 @@ class GoalsApp extends Application.AppBase {
                     "target_average_power",
                     $.gTargetAveragePower
                 ) as Number;
+            if ($.gTargetAveragePower == 0) {
+                $.gTargetAveragePower = $.getUserFtp();
+            }
+
             $.gTargetAverageSpeed =
                 $.getStorageValue(
                     "target_average_speed",
@@ -155,11 +242,13 @@ class GoalsApp extends Application.AppBase {
                 ) as Number;
             $.gTargetMinutesElapsed =
                 $.getStorageValue(
-                    "target_minutes_elapsed",
+                    "target_duration",
                     $.gTargetMinutesElapsed
                 ) as Number;
             $.gTargetHeartRateZone =
-                $.getStorageValue("target_heart_rate_zone", 2) as Number;
+                $.getStorageValue("target_heart_rate_zone", 2.0f) as Float;
+            $.gTargetAverageHeartRateZone =
+                $.getStorageValue("target_average_heart_rate_zone", 2.0f) as Float;
             $.gHeartRate.initHrZones();
 
             $.gTargetIntensityFactor =
@@ -172,6 +261,18 @@ class GoalsApp extends Application.AppBase {
                     "target_training_stress_score",
                     $.gTargetTrainingStressScore
                 ) as Number;
+
+            // Alerts
+            $.gAlertCaloriesWindow =
+                $.getStorageValue("alert_calories_window", 300) as Number;
+            $.gAlertCaloriesSound =
+                $.getStorageValue("alert_calories_sound", false) as Boolean;
+            $.gAlertTimeElapsedWindow =
+                $.getStorageValue("alert_timeelapsed_window", 0) as Number;
+            $.gAlertTimeElapsedSound =
+                $.getStorageValue("alert_timeelapsed_sound", false) as Boolean;
+            $.gAlertDisplayTimeMillisec =
+                ($.getStorageValue("alert_displaytime_sec", 10) as Number) * 1000;
 
             $.logInfo(["User settings loaded"]);
         } catch (ex) {
@@ -186,31 +287,42 @@ function getApp() as GoalsApp {
 }
 
 var gHeartRate = new HeartRate();
-// +1 for the layout option
-var gShowFieldsArraySize as Number = $.gMaxProgressColumns + 1;
+var gPowerPerSec = new PowerPerSec();
+
+// +5 for the layout and other settings
+var gPreambleFieldCount as Number = 5;
+var gShowFieldsArraySize as Number =
+    $.gPreambleFieldCount + $.gMaxProgressColumns;
+
 var gDemo as Boolean = false;
-var gShowLabels as Boolean = true;
-var gShowValues as Boolean = false;
+var gCadenceCounter as Number = 3;
+var gHspShowValue as Boolean = false;
 
-var gCadenceCounter as Number = 3; 
-var gGapColumnsHorizontal as Number = 8;
-var gGapColumnsVertical as Number = 8;
 
+// Target values for progress calculations
 var gTargetDistance as Number = 150;
+var gTargetMinutesElapsed as Number = 300;
 var gTargetCalories as Number = 2000;
+var gTargetTrainingStressScore as Number = 150;
+
 var gTargetAveragePower as Number = 200;
 var gTargetAverageSpeed as Number = 28;
 var gTargetAverageCadence as Number = 90;
-var gTargetCadence as Number = 90;
+var gTargetAverageHeartRateZone as Float = 2.0f;
+var gTargetNormalizedPower as Number = 230;
+var gTargetIntensityFactor as Float = 0.9;
 
-var gTargetNormalizedPower as Number = 220;
-var gTargetTotalAscent as Number = 300;
-var gTargetTotalDescent as Number = 300;
-var gTargetMinutesElapsed as Number = 300;
-
-var gTargetHeartRateZone as Number = 2;
-var gTargetIntensityFactor as Float = 0.8;
-var gTargetTrainingStressScore as Number = 100;
-
-var gTargetSpeed as Number = 28; // km/h
 var gTargetPower as Number = 0; // watts, default from user profile ftp if available, otherwise 250 watts
+var gTargetSpeed as Number = 30; // km/h
+var gTargetCadence as Number = 90;
+var gTargetHeartRateZone as Float = 2.0f;
+
+var gTargetTotalAscent as Number = 500;
+var gTargetTotalDescent as Number = 500;
+
+// Alerts
+var gAlertCaloriesWindow as Number = 300; // calories
+var gAlertCaloriesSound as Boolean = false;
+var gAlertTimeElapsedWindow as Number = 0; // minutes
+var gAlertTimeElapsedSound as Boolean = false;
+var gAlertDisplayTimeMillisec as Number = 10; // seconds
