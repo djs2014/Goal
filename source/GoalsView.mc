@@ -24,7 +24,8 @@ class GoalsView extends WatchUi.DataField {
     hidden var mPaused as Boolean = true;
     hidden var mDemoMode as Boolean = false;
     hidden var mPauseExtendedCounter as Number = 10;
-    hidden var mShowDetails as Boolean = false;
+    hidden var mShowDetailsOnPause as Boolean = false;
+    hidden var mShowDetailsOn0Cadence as Boolean = false;
 
     hidden var mHasCadence as Boolean = false;
     hidden var mCadenceZeroCounter as Number = $.gCadenceCounter;
@@ -145,11 +146,11 @@ class GoalsView extends WatchUi.DataField {
         }
 
         if (mPaused) {
-            mShowDetails = true;
+            mShowDetailsOnPause = true;
             mPauseExtendedCounter = 10;
         } else if (mPauseExtendedCounter <= 0) {
             mPauseExtendedCounter = 0;
-            mShowDetails = false;
+            mShowDetailsOnPause = false;            
         } else {
             mPauseExtendedCounter -= 1;
         }
@@ -193,20 +194,32 @@ class GoalsView extends WatchUi.DataField {
                 if (!mHasCadence) {
                     mHasCadence = cadence > 0;
                 } else {
-                    // If cadence is zero for x consecutive updates, then show details.do {
-                    if (cadence == 0) {
-                        mCadenceZeroCounter -= 1;
-                        if (mCadenceZeroCounter <= 0) {
-                            mShowDetails = true;
+                    // If cadence is zero for x consecutive updates, then show details
+                    if (cadence == 0) {  
+                        if (mCadenceZeroCounter <= 0) {                            
+                            mShowDetailsOn0Cadence = true;
+                            mCadenceZeroCounter = 0; 
+                        } else {
+                            mCadenceZeroCounter -= 1;
                         }
-                    } else {
-                        mCadenceZeroCounter = $.gCadenceCounter; // reset counter
-                        mShowDetails = false;
+                    } else {                        
+                        // Count towards the gCadenceCounter threshold to reset the counter and hide details
+                        if (mCadenceZeroCounter < $.gCadenceCounter) {
+                            mCadenceZeroCounter += 1;
+                        } else if (mShowDetailsOn0Cadence) {                           
+                            mShowDetailsOn0Cadence = false;
+                            mCadenceZeroCounter = $.gCadenceCounter; // reset counter                            
+                        }                        
                     }
                 }
             }
         }
 
+        setFocusFieldsCount($.gFocusFieldCount, $.gFocusFieldStartAt);
+        if (mFocusFieldsCount > 0) {
+            // Update focus fields based on the current progress ratios
+            updateFocusFields();
+        }
         var numBars = mProgressRatios.size();
         for (var i = 0; i < numBars; i++) {
             mProgressColors[i] = getDynamicColor(mProgressRatios[i]);
@@ -265,6 +278,90 @@ class GoalsView extends WatchUi.DataField {
             ratio = mProgressRatios[idx];
         }
         return ratio * 100.0f; // Return as percentage
+    }
+
+    
+    hidden var mFocusFieldsCount as Number = 3;
+    hidden var mFocusStartAt as Float = 0.8f;
+    hidden var mFocusFields as Array<FieldType> = new Array<
+        FieldType
+    >[mFocusFieldsCount];
+    hidden var mFocusIndices as Array<Number> = new Array<
+        Number
+    >[$.gMaxProgressColumns];
+
+    function setFocusFieldsCount(count as Number, startAt as Float) as Void {
+        var size = mProgressFields.size();
+        if (count > size) {
+            count = size;
+        }
+        mFocusStartAt = startAt;
+        if (count != mFocusFieldsCount) {
+            // Only reallocate if the count has changed
+            mFocusFieldsCount = count;
+            mFocusFields = new Array<FieldType>[mFocusFieldsCount];
+        }
+    }
+    // Get mFocusFieldsCount number of fieldTypes with the highest progress ratios
+    // Only fields that have ratio > mFocusStartAt will be considered for focus
+    // Create a tiny primitive array of indices [0, 1, 2, ...] and sort that
+    // based on the values in mProgressRatios. This keeps the original data intact
+    // and avoids allocating complex objects.Using a simple Insertion Sort for the index map
+    // perfect for $N \le 10$):
+    hidden function updateFocusFields() as Void {
+        // Initialize index map
+        var size = $.gMaxProgressColumns;
+        for (var i = 0; i < size; i++) {
+            mFocusIndices[i] = i;
+        }
+
+        // Simple Insertion Sort (descending based on ratios)
+        for (var i = 1; i < size; i++) {
+            var keyIndex = mFocusIndices[i];
+            var keyValue = mProgressRatios[keyIndex];
+            var j = i - 1;
+
+            while (j >= 0 && mProgressRatios[mFocusIndices[j]] < keyValue) {
+                mFocusIndices[j + 1] = mFocusIndices[j];
+                j--;
+            }
+            mFocusIndices[j + 1] = keyIndex;
+        }
+
+        // mFocusStartAt = 0.0f;
+        // Extract the top mFocusFieldsCount field types
+        // If value is below mFocusStartAt, then skip it and fill the rest with 0
+        for (var i = 0; i < mFocusFieldsCount; i++) {
+            if (mProgressRatios[mFocusIndices[i]] < mFocusStartAt) {
+                mFocusFields[i] = 0;
+            } else {
+                mFocusFields[i] = mProgressFields[mFocusIndices[i]];
+            }
+        }      
+
+        // System.println([
+        //     "mFocusStartAt:",
+        //     mFocusStartAt,
+        //     "mFocusFieldsCount:",
+        //     mFocusFieldsCount,
+        //     "mFocusFields:",
+        //     mFocusFields,
+        //     "mProgressRatios:",
+        //     mProgressRatios
+        // ]);  
+    }
+
+    hidden function isFocusField(fieldType as FieldType) as Boolean {
+        if (mFocusFieldsCount <= 0) {
+            return false;
+        }
+
+        for (var i = 0; i < mFocusFieldsCount; i++) {
+            if (mFocusFields[i] == fieldType) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // Display the value you computed here. This will be called
@@ -427,18 +524,20 @@ class GoalsView extends WatchUi.DataField {
 
         var minWidth = dc.getTextWidthInPixels("888", Graphics.FONT_XTINY) + 4;
         var minHeight = dc.getFontHeight(Graphics.FONT_XTINY) + 4;
-        var showLabels = mFieldShowLabels || mShowDetails;
-        var showValues = mFieldShowValues || mShowDetails;
+        var showLabels = mFieldShowLabels || mShowDetailsOnPause || mShowDetailsOn0Cadence;
+        var showValues = mFieldShowValues || mShowDetailsOnPause || mShowDetailsOn0Cadence;
 
         // 2. Iterate and carve out segments
         for (var i = 0; i < count; i++) {
             var index = validIndices[i];
             var currentWeight = ratios[index];
             var fieldType = fieldTypes[index];
-            var label = showLabels ? getFieldLabel(fieldType) : "";
+            var focusField = isFocusField(fieldType);
+            var label =
+                showLabels || focusField ? getFieldLabel(fieldType) : "";
             var color = barColors[index];
             var valueText = "";
-            if (showValues) {
+            if (showValues || focusField) {
                 if (mDemoMode) {
                     valueText = getDemoValue(index).format("%.0f") + " %";
                 } else {
@@ -1135,7 +1234,14 @@ class GoalsView extends WatchUi.DataField {
             );
             dc.setPenWidth(1);
         }
-        if (mFieldShowLabels || mShowDetails || hasAttention) {
+
+        // For now only showing label
+        if (
+            mFieldShowLabels ||
+            mShowDetailsOnPause || mShowDetailsOn0Cadence ||
+            hasAttention ||
+            isFocusField(fieldType)
+        ) {
             // Label centered at the bottom of the bar when paused
             var tx = x + w / 2;
             var ty = y + h - dc.getFontHeight(Graphics.FONT_XTINY) - 2;
@@ -1304,9 +1410,13 @@ class GoalsView extends WatchUi.DataField {
         dc.drawRoundedRectangle(x, y, w, h, 4);
         dc.setPenWidth(1);
 
+        var showLabel = mFieldShowLabels || mShowDetailsOnPause || mShowDetailsOn0Cadence || hasAttention;
+        var showValues =
+            (mFieldShowValues && (mShowDetailsOnPause || mShowDetailsOn0Cadence)) || isFocusField(fieldType);
+
         // 5. Inline Checkmark (Rendered at the far right edge of the bar)
-        // Inline Checkmark (Centered at the far right edge of the horizontal bar)
-        if (progress >= 1.0) {
+        // Only when not showing values.
+        if (progress >= 1.0 && !showValues) {
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
             dc.setPenWidth(2);
             var checkSize = (h * 0.25).toNumber();
@@ -1327,7 +1437,7 @@ class GoalsView extends WatchUi.DataField {
             dc.setPenWidth(1);
         }
 
-        if (mFieldShowLabels || mShowDetails || hasAttention) {
+        if (showLabel) {
             var textLabel = getFieldLabelWide(fieldType);
             if (hasAttention) {
                 textLabel += " EAT!";
@@ -1381,16 +1491,8 @@ class GoalsView extends WatchUi.DataField {
                 currentX += charWidth;
             }
 
-            // TEST
-            var showValues =
-                fieldType == FTDistanceOrNavDestination ||
-                fieldType == FTDistanceToDestination ||
-                fieldType == FTDistanceToNext;
-            // Only show values if the progress is less than 100% and the user has requested to show values
-            if (
-                (progress < 1.0 && mFieldShowValues && mShowDetails) ||
-                showValues
-            ) {
+            // Show values
+            if (showValues) {
                 var textValue = getFormattedValue(
                     mProgress.getProgressFieldValue(fieldType),
                     fieldType,
@@ -1443,7 +1545,7 @@ class GoalsView extends WatchUi.DataField {
                 }
                 //}
             }
-        } // mFieldShowLabels || mShowDetails)
+        } // mFieldShowLabels || mShowDetailsOnPause)
     }
 
     hidden var rad2degFactor as Float = 180 / Math.PI; // Conversion factor from radians to degrees

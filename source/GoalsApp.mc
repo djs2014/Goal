@@ -47,6 +47,8 @@ class GoalsApp extends Application.AppBase {
                 Storage.setValue("power_per_seconds", 3);
                 Storage.setValue("hsp_darklight_breakpoint", 127.5);
                 Storage.setValue("hsp_showvalue", false);
+                Storage.setValue("focus_field_count", 2);
+                Storage.setValue("focus_field_start_at", 1.2);
 
                 Storage.setValue(
                     "show_one_field",
@@ -72,7 +74,7 @@ class GoalsApp extends Application.AppBase {
                 Storage.setValue(
                     "show_large_field",
                     [
-                        FLProportional, // layout
+                        FLVertical, // layout
                         false, // show labels
                         false, // show values
                         8, // gap
@@ -81,16 +83,16 @@ class GoalsApp extends Application.AppBase {
                         FTMinutesElapsed,
                         FTCalories,
                         FTTrainingStressScore,
-                        FTSpeed,
-                        FTCadence,
                         FTPower,
+                        FTCadence,
+                        FTSpeed,
                         FTHeartRateZone,
                     ] as Array<Numeric or FieldLayout or Boolean>
                 );
                 Storage.setValue(
                     "show_wide_field",
                     [
-                        FLVertical, // layout
+                        FLProportional, // layout
                         true, // show labels
                         false, // show values
                         8, // gap
@@ -99,9 +101,9 @@ class GoalsApp extends Application.AppBase {
                         FTMinutesElapsed,
                         FTCalories,
                         FTTrainingStressScore,
-                        FTSpeed,
-                        FTCadence,
                         FTPower,
+                        FTCadence,
+                        FTSpeed,
                         FTHeartRateZone,
                     ] as Array<Numeric or FieldLayout or Boolean>
                 );
@@ -117,9 +119,9 @@ class GoalsApp extends Application.AppBase {
                         FTMinutesElapsed,
                         FTCalories,
                         FTTrainingStressScore,
-                        FTSpeed,
-                        FTCadence,
                         FTPower,
+                        FTCadence,
+                        FTSpeed,
                         FTHeartRateZone,
                     ] as Array<Numeric or FieldLayout or Boolean>
                 );
@@ -189,6 +191,12 @@ class GoalsApp extends Application.AppBase {
             $.gHspShowValue =
                 $.getStorageValue("hsp_showvalue", $.gHspShowValue) as
                 Boolean;
+            $.gFocusFieldCount =
+                $.getStorageValue("focus_field_count", $.gFocusFieldCount) as
+                Number;
+            $.gFocusFieldStartAt =
+                $.getStorageValue("focus_field_start_at", $.gFocusFieldStartAt) as
+                Float;
 
             $.gTargetDistance =
                 $.getStorageValue("target_distance", $.gTargetDistance) as
@@ -298,6 +306,8 @@ var gDemo as Boolean = false;
 var gCadenceCounter as Number = 3;
 var gHspShowValue as Boolean = false;
 
+var gFocusFieldCount as Number = 2;
+var gFocusFieldStartAt as Float = 1.2f;
 
 // Target values for progress calculations
 var gTargetDistance as Number = 150;

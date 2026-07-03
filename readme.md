@@ -52,6 +52,7 @@ If some colors have black text but still appear dark (garmin color + sunglasses)
 
 Show HSP value: Show calculated hsp value in top right corner (only for Proportional segments).
 
-
+Focus field count: Display actual value for max number of fields.
+Focus start at: Only focus fields if ratio is greater than this value.
 
 

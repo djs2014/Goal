@@ -85,6 +85,26 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         )
       );
 
+      // Number or focus fields
+      mi = new WatchUi.MenuItem(
+        "Focus field count|0-10",
+        null,
+        "focus_field_count",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      advMenu.addItem(mi);
+
+      // Focus start at ratio
+      mi = new WatchUi.MenuItem(
+        "Focus start at ratio|0.0-5.0",
+        null,
+        "focus_field_start_at",
+        null
+      );
+      mi.setSubLabel($.getStorageFloatAsString(mi.getId() as String));
+      advMenu.addItem(mi);
+
       WatchUi.pushView(advMenu, new $.GeneralMenuDelegate(), WatchUi.SLIDE_UP);
       return;
     }
@@ -424,8 +444,6 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         (array[index] as Number).toString(),
         getKeyAndIndex(storageKey, index)
       );
-
-      System.println(array);
 
       // Bars
       index = 5;
