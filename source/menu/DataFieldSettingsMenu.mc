@@ -400,13 +400,13 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         fieldMenu,
         "Layout", // Don't change this label, it's used in the delegate to identify column fields
         $.getFieldLayoutAsString(array[index] as FieldLayout),
-        getKeyAndIndex(storageKey, index)
+        $.getKeyAndIndex(storageKey, index)
       );
 
       // var mi = new WatchUi.MenuItem("Layout", null, prefix + "|" + index.format("%d"), null);
       // mi.setSubLabel($.getLayoutByIndex(prefix, 0));
       // fieldMenu.addItem(mi);
-
+  
       // Show labels
       index = 1;
       $.addToggleMenuItem(
@@ -433,7 +433,7 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         fieldMenu,
         "Gap columns|0~20(pixels)",
         (array[index] as Number).toString(),
-        getKeyAndIndex(storageKey, index)
+        $.getKeyAndIndex(storageKey, index)
       );
 
       // divider at %
@@ -442,18 +442,28 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         fieldMenu,
         "Divider at|0~100(%)",
         (array[index] as Number).toString(),
-        getKeyAndIndex(storageKey, index)
+        $.getKeyAndIndex(storageKey, index)
       );
 
-      // Bars
       index = 5;
+      $.addToggleMenuItem(
+        fieldMenu,
+        "Field focus",
+        null,
+        $.getKeyAndIndex(storageKey, index),
+        array[index] == true
+      );
+
+      // == gPreambleFieldCount
+      // Bars
+      index = 6;
       for (var i = index; i < $.gShowFieldsArraySize; i++) {
         var colNumber = i - index + 1;
         $.addMenuItem(
           fieldMenu,
           "Bar " + colNumber, // Don't change this label, it's used in the delegate to identify column fields
           $.getFieldTypeAsString(array[i] as FieldType),
-          getKeyAndIndex(storageKey, i)
+          $.getKeyAndIndex(storageKey, i)
         );
       }
 

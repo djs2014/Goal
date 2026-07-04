@@ -58,6 +58,7 @@ class GoalsApp extends Application.AppBase {
                         true, // show values
                         4, // gap
                         80, // divider at
+                        false, // field focus
                         FTDistance,
                         FTMinutesElapsed,
                         FTCalories,
@@ -75,10 +76,11 @@ class GoalsApp extends Application.AppBase {
                     "show_large_field",
                     [
                         FLVertical, // layout
-                        false, // show labels
+                        true, // show labels
                         false, // show values
                         8, // gap
                         80, // divider at
+                        false, // field focus   
                         FTDistance,
                         FTMinutesElapsed,
                         FTCalories,
@@ -93,10 +95,11 @@ class GoalsApp extends Application.AppBase {
                     "show_wide_field",
                     [
                         FLProportional, // layout
-                        true, // show labels
+                        false, // show labels
                         false, // show values
                         8, // gap
                         80, // divider at
+                        true, // field focus
                         FTDistance,
                         FTMinutesElapsed,
                         FTCalories,
@@ -115,6 +118,7 @@ class GoalsApp extends Application.AppBase {
                         false, // show values
                         1, // gap
                         80, // divider at
+                        false, // field focus
                         FTDistance,
                         FTMinutesElapsed,
                         FTCalories,
@@ -298,7 +302,7 @@ var gHeartRate = new HeartRate();
 var gPowerPerSec = new PowerPerSec();
 
 // +5 for the layout and other settings
-var gPreambleFieldCount as Number = 5;
+var gPreambleFieldCount as Number = 6;
 var gShowFieldsArraySize as Number =
     $.gPreambleFieldCount + $.gMaxProgressColumns;
 
