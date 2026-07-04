@@ -1,5 +1,8 @@
 drawProportionalGrid
 
+some color profiles
+
+demo -> 
 z default order power/cad/speed/hr
 z prop for wide
 z focus/show detail x fields ratio > .8 etc.
@@ -11,3 +14,5 @@ value / ratio / max / avg
 plan:
 ? track TSS over week..
 add vo2max formula -> ?? 
+
+nice html page showing the colors per percentage per scheme

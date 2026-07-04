@@ -131,6 +131,8 @@ class GoalsView extends WatchUi.DataField {
         // Add to maximum size to match mProgressRatios size
         $.ensureArraySize(mProgressFields, $.gMaxProgressColumns, 0);
         // $.logInfo(["onLayout: mProgressFields:", mProgressFields]);
+
+        mColorScheme = $.gColorScheme;
     }
 
     // The given info object contains all the current workout information.
@@ -226,7 +228,10 @@ class GoalsView extends WatchUi.DataField {
 
         var numBars = mProgressRatios.size();
         for (var i = 0; i < numBars; i++) {
-            mProgressColors[i] = getDynamicColor(mProgressRatios[i]);
+            mProgressColors[i] = getDynamicColor(
+                mProgressRatios[i],
+                mColorScheme
+            );
         }
     }
 
@@ -255,10 +260,10 @@ class GoalsView extends WatchUi.DataField {
         mDemoCounter3 = (mDemoCounter3 + 4).toNumber() % 250;
         mDemoCounter4 = (mDemoCounter4 + 5).toNumber() % 200;
         mDemoCounter5 = (mDemoCounter5 + 6).toNumber() % 200;
-        mDemoCounter6 = (mDemoCounter6 + 7).toNumber() % 200;
+        mDemoCounter6 = (mDemoCounter6 + 7).toNumber() % 300;
         mDemoCounter7 = (mDemoCounter7 + 8).toNumber() % 150;
         mDemoCounter8 = (mDemoCounter8 + 9).toNumber() % 150;
-        mDemoCounter9 = (mDemoCounter9 + 10).toNumber() % 150;
+        mDemoCounter9 = (mDemoCounter9 + 10).toNumber() % 190;
         mDemoCounter10 = (mDemoCounter10 + 11).toNumber() % 150;
 
         mProgressRatios =
@@ -1130,7 +1135,301 @@ class GoalsView extends WatchUi.DataField {
         return colors[index % colors.size()];
     }
 
-    function getDynamicColor(progress as Float?) as Graphics.ColorType {
+    hidden var mColorScheme as ColorScheme = SCHEME_CLASSIC;
+
+    function getDynamicColor(
+        progress as Float?,
+        scheme as ColorScheme
+    ) as Graphics.ColorType {
+        if (progress == null) {
+            progress = 0.0f;
+        }
+
+        // Exact milestone snap-points for a clean 0.5-second glance on the bike
+        if (progress >= 0.98f && progress <= 1.02f) {
+            switch (scheme) {
+                case SCHEME_INFRARED:
+                    return 0x00ff00; // Solid Bright Green at target
+                case SCHEME_CYBERPUNK:
+                    return 0x00ffd2; // Solid Electric Cyan at target
+                case SCHEME_PODIUM:
+                    return 0xffd700; // Solid Gold at target
+                case SCHEME_PASTEL:
+                    return 0xf4f4f6; // Clean, soft off-white
+                default:
+                    return 0xffd700; // Classic Gold
+            }
+        }
+
+        // --- PHASE 1: 0% to 50% ---
+        if (progress <= 0.5f) {
+            var factor = progress / 0.5f;
+            switch (scheme) {
+                case SCHEME_INFRARED:
+                    // Charcoal/Dark Grey [70, 73, 76] to Teal Blue [0, 140, 160]
+                    return $.transitionFromTo(
+                        255,
+                        70,
+                        73,
+                        76,
+                        0,
+                        140,
+                        160,
+                        factor
+                    );
+                case SCHEME_CYBERPUNK:
+                    // Deep Midnight Navy [10, 25, 60] to Electric Cyan [0, 210, 255]
+                    return $.transitionFromTo(
+                        255,
+                        10,
+                        25,
+                        60,
+                        0,
+                        210,
+                        255,
+                        factor
+                    );
+                case SCHEME_PODIUM:
+                    // Dull Copper [120, 70, 45] to Bright Bronze/Copper [190, 115, 65]
+                    return $.transitionFromTo(
+                        255,
+                        120,
+                        70,
+                        45,
+                        190,
+                        115,
+                        65,
+                        factor
+                    );
+                case SCHEME_PASTEL:
+                    // Soft Slate Grey [215, 218, 222] to Powder Blue [190, 210, 230]
+                    return $.transitionFromTo(
+                        255,
+                        215,
+                        218,
+                        222,
+                        190,
+                        210,
+                        230,
+                        factor
+                    );
+                default: // CLASSIC
+                    // Blue [0, 0, 255] to Green [0, 255, 0]
+                    return $.transitionFromTo(
+                        255,
+                        0,
+                        0,
+                        255,
+                        0,
+                        255,
+                        0,
+                        factor
+                    );
+            }
+        }
+
+        // --- PHASE 2: 50% to 100% ---
+        else if (progress <= 1.0f) {
+            var factor = (progress - 0.5f) / 0.5f;
+            switch (scheme) {
+                case SCHEME_INFRARED:
+                    // Teal Blue [0, 140, 160] to Pure Green [0, 255, 0]
+                    return $.transitionFromTo(
+                        255,
+                        0,
+                        140,
+                        160,
+                        0,
+                        255,
+                        0,
+                        factor
+                    );
+                case SCHEME_CYBERPUNK:
+                    // Electric Cyan [0, 210, 255] to Acid Lime Green [150, 255, 0]
+                    return $.transitionFromTo(
+                        255,
+                        0,
+                        210,
+                        255,
+                        150,
+                        255,
+                        0,
+                        factor
+                    );
+                case SCHEME_PODIUM:
+                    // Bronze [190, 115, 65] to Sleek Chrome/Silver [210, 215, 220]
+                    return $.transitionFromTo(
+                        255,
+                        190,
+                        115,
+                        65,
+                        210,
+                        215,
+                        220,
+                        factor
+                    );
+                case SCHEME_PASTEL:
+                    // Powder Blue [190, 210, 230] to Pale Mint/Sage [190, 225, 205]
+                    return $.transitionFromTo(
+                        255,
+                        190,
+                        210,
+                        230,
+                        190,
+                        225,
+                        205,
+                        factor
+                    );
+                default: // CLASSIC
+                    // Green [0, 255, 0] to Bright Gold/Yellow [255, 215, 0]
+                    return $.transitionFromTo(
+                        255,
+                        0,
+                        255,
+                        0,
+                        255,
+                        215,
+                        0,
+                        factor
+                    );
+            }
+        }
+
+        // --- PHASE 3: 100% to 200% ---
+        else if (progress <= 2.0f) {
+            var factor = (progress - 1.0f) / 1.0f;
+            if (factor > 1.0f) {
+                factor = 1.0f;
+            }
+
+            switch (scheme) {
+                case SCHEME_INFRARED:
+                    // Pure Green [0, 255, 0] to Neon Safety Orange [255, 110, 0]
+                    return $.transitionFromTo(
+                        255,
+                        0,
+                        255,
+                        0,
+                        255,
+                        110,
+                        0,
+                        factor
+                    );
+                case SCHEME_CYBERPUNK:
+                    // Acid Lime Green [150, 255, 0] to Neon Hot Pink [255, 0, 130]
+                    return $.transitionFromTo(
+                        255,
+                        150,
+                        255,
+                        0,
+                        255,
+                        0,
+                        130,
+                        factor
+                    );
+                case SCHEME_PODIUM:
+                    // Silver [210, 215, 220] to Bright Trophy Gold [255, 215, 0]
+                    return $.transitionFromTo(
+                        255,
+                        210,
+                        215,
+                        220,
+                        255,
+                        215,
+                        0,
+                        factor
+                    );
+                case SCHEME_PASTEL:
+                    // Pale Mint [190, 225, 205] to Creamy Peach/Chalky Coral [245, 205, 190]
+                    return $.transitionFromTo(
+                        255,
+                        190,
+                        225,
+                        205,
+                        245,
+                        205,
+                        190,
+                        factor
+                    );
+                default: // CLASSIC
+                    // Gold [255, 215, 0] to Dark Red [139, 0, 0]
+                    return $.transitionFromTo(
+                        255,
+                        255,
+                        215,
+                        0,
+                        139,
+                        0,
+                        0,
+                        factor
+                    );
+            }
+        }
+
+        // --- PHASE 4: Beyond 200% ---
+        else {
+            var factor = (progress - 2.0f) / 1.0f;
+            if (factor > 1.0f) {
+                factor = 1.0f;
+            }
+
+            switch (scheme) {
+                case SCHEME_INFRARED:
+                    // Neon Safety Orange [255, 110, 0] to Deep Violet/Burnt Magenta [90, 0, 80]
+                    return $.transitionFromTo(
+                        255,
+                        255,
+                        110,
+                        0,
+                        90,
+                        0,
+                        80,
+                        factor
+                    );
+                case SCHEME_CYBERPUNK:
+                    // Neon Hot Pink [255, 0, 130] to Hyper White [255, 255, 255]
+                    return $.transitionFromTo(
+                        255,
+                        255,
+                        0,
+                        130,
+                        255,
+                        255,
+                        255,
+                        factor
+                    );
+                case SCHEME_PODIUM:
+                    // Trophy Gold [255, 215, 0] to Diamond Mint/Electric Ice [160, 245, 220]
+                    return $.transitionFromTo(
+                        255,
+                        255,
+                        215,
+                        0,
+                        160,
+                        245,
+                        220,
+                        factor
+                    );
+                case SCHEME_PASTEL:
+                    // Creamy Peach [245, 205, 190] to Muted Lavender/Lilac [220, 200, 230]
+                    return $.transitionFromTo(
+                        255,
+                        245,
+                        205,
+                        190,
+                        220,
+                        200,
+                        230,
+                        factor
+                    );
+                default: // CLASSIC
+                    // Dark Red [139, 0, 0] to Maroon Black [40, 0, 5]
+                    return $.transitionFromTo(255, 139, 0, 0, 40, 0, 5, factor);
+            }
+        }
+    }
+
+    function getDynamicColorDefault(progress as Float?) as Graphics.ColorType {
         if (progress == null) {
             progress = 0.0f;
         }

@@ -49,6 +49,7 @@ class GoalsApp extends Application.AppBase {
                 Storage.setValue("hsp_showvalue", false);
                 Storage.setValue("focus_field_count", 2);
                 Storage.setValue("focus_field_start_at", 1.2);
+                Storage.setValue("color_scheme", 0); 
 
                 Storage.setValue(
                     "show_one_field",
@@ -202,6 +203,10 @@ class GoalsApp extends Application.AppBase {
                 $.getStorageValue("focus_field_start_at", $.gFocusFieldStartAt) as
                 Float;
 
+            $.gColorScheme =
+                $.getStorageValue("color_scheme", $.gColorScheme) as
+                ColorScheme;
+    
             $.gTargetDistance =
                 $.getStorageValue("target_distance", $.gTargetDistance) as
                 Number;
@@ -312,6 +317,7 @@ var gHspShowValue as Boolean = false;
 
 var gFocusFieldCount as Number = 2;
 var gFocusFieldStartAt as Float = 1.2f;
+var gColorScheme as ColorScheme = SCHEME_CLASSIC;
 
 // Target values for progress calculations
 var gTargetDistance as Number = 150;

@@ -45,6 +45,14 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
 
       var mi;
 
+      mi = new WatchUi.MenuItem("Colorscheme", null, "color_scheme", null);
+      mi.setSubLabel(
+        $.getColorSchemeAsString(
+          $.getStorageValue(mi.getId() as String, 0) as ColorScheme
+        )
+      );
+      advMenu.addItem(mi);
+
       mi = new WatchUi.MenuItem(
         "Power per|1~60(seconds)",
         null,
@@ -406,7 +414,7 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       // var mi = new WatchUi.MenuItem("Layout", null, prefix + "|" + index.format("%d"), null);
       // mi.setSubLabel($.getLayoutByIndex(prefix, 0));
       // fieldMenu.addItem(mi);
-  
+
       // Show labels
       index = 1;
       $.addToggleMenuItem(
@@ -599,6 +607,17 @@ class GeneralMenuDelegate extends WatchUi.Menu2InputDelegate {
         sp.add($.getFieldTypeAsString(i as FieldType), null, i);
       }
       sp.setOnSelected(self, :onSelectedField, _item);
+      sp.show();
+      return;
+    }
+
+    if (id instanceof String && id.equals("color_scheme")) {
+      var sp = new selectionMenuPicker("Colorscheme", id as String);
+
+      for (var i = 0; i < $.ColorSchemeCount; i++) {
+        sp.add($.getColorSchemeAsString(i as ColorScheme), null, i);
+      }
+      sp.setOnSelected(self, :onSelectedSelection, _item);
       sp.show();
       return;
     }
@@ -851,4 +870,30 @@ function getFieldTypeAsString(fieldType as FieldType) as String {
     default:
       return "Unknown";
   }
+}
+
+function getColorSchemeAsString(scheme as ColorScheme) as String {
+  switch (scheme) {
+    case SCHEME_CLASSIC:
+      return "Classic";
+    case SCHEME_INFRARED:
+      return "Infrared";
+    case SCHEME_CYBERPUNK:
+      return "Cyberpunk";
+    case SCHEME_PODIUM:
+      return "Podium";
+    case SCHEME_PASTEL:
+      return "Pastel";
+    default:
+      return "Unknown";
+  }
+}
+
+var ColorSchemeCount = 5;
+enum ColorScheme {
+  SCHEME_CLASSIC = 0,
+  SCHEME_INFRARED = 1,
+  SCHEME_CYBERPUNK = 2,
+  SCHEME_PODIUM = 3,
+  SCHEME_PASTEL = 4,
 }
