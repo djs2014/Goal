@@ -1,4 +1,9 @@
-drawProportionalGrid
+  // TODO
+        // Rule -> try to not overlap bubbles.
+up can slow
+down can be faster
+when circle inside area of another -> push outside area
+
 
 some color profiles
 

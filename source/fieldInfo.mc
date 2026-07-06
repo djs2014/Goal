@@ -1,14 +1,15 @@
 import Toybox.Lang;
 import Toybox.System;
 
-const FieldLayoutCount = 3;
+const FieldLayoutCount = 4;
 enum FieldLayout {
     FLVertical = 0,
     FLHorizontal = 1,
     FLProportional = 2,
-    FLCircle = 3,
-    FL2Circles = 4,   
-    FLRadialGauge = 5, 
+    FLBubbles = 3,
+    // FLCircle = 3,
+    // FL2Circles = 4,   
+    // FLRadialGauge = 5, 
 }
 
 var FieldTypeCount = 20; // incl the 0

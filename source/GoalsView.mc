@@ -133,6 +133,10 @@ class GoalsView extends WatchUi.DataField {
         // $.logInfo(["onLayout: mProgressFields:", mProgressFields]);
 
         mColorScheme = $.gColorScheme;
+
+        if (mFieldLayout == FLBubbles) {
+            initBubbleLayout(dc);
+        }
     }
 
     // The given info object contains all the current workout information.
@@ -477,6 +481,15 @@ class GoalsView extends WatchUi.DataField {
                     dc.getHeight() - 2
                 );
                 break;
+            case FLBubbles:
+                drawBubbleLayout(
+                    dc,
+                    1,
+                    1,
+                    dc.getWidth() - 2,
+                    dc.getHeight() - 2
+                );
+                break;
         }
     }
 
@@ -731,7 +744,7 @@ class GoalsView extends WatchUi.DataField {
         if (posSpace != null) {
             font = Graphics.FONT_XTINY;
             valueOnly = valueText.substring(0, posSpace);
-            units = valueText.substring(posSpace, null);
+            units = valueText.substring(posSpace +1, null);
             widthUnits = dc.getTextWidthInPixels(units, font);
             unitHeight = dc.getFontHeight(font);
             hasUnits = units != null && units.length() > 0;
@@ -795,28 +808,6 @@ class GoalsView extends WatchUi.DataField {
         var widthValue = dc.getTextWidthInPixels(valueOnly, fontValue);
 
         if (isPortrait) {
-            // System.println([
-            //     "drawProportionalGrid: Portrait mode",
-            //     "sw:",
-            //     sw,
-            //     "sh:",
-            //     sh,
-            //     "labelHeight:",
-            //     labelHeight,
-            //     "valueHeight:",
-            //     valueHeight,
-            //     "unitHeight:",
-            //     unitHeight,
-            //     "valueOnly:",
-            //     valueOnly,
-            //     "units:",
-            //     units,
-            //     "hasLabel:",
-            //     hasLabel,
-            //     "hasUnits:",
-            //     hasUnits,
-            // ]);
-
             // Draw value and units stacked vertically
             // and only if it fits within the rectangle width:
             // label+value+unit | label | label+value | value+unit | value
@@ -866,26 +857,13 @@ class GoalsView extends WatchUi.DataField {
             return;
         } else {
             // Landscape
-            // System.println([
-            //     "drawProportionalGrid: Landscape mode, labelHeight:",
-            //     labelHeight,
-            //     "valueHeight:",
-            //     valueHeight,
-            //     "unitHeight:",
-            //     unitHeight,
-            //     "valueOnly:",
-            //     valueOnly,
-            //     "units:",
-            //     units,
-            // ]);
-
             if (label != null && label.length() > 0) {
                 dc.drawText(
                     centerX,
                     startY,
                     font,
                     label,
-                    Graphics.TEXT_JUSTIFY_CENTER //| Graphics.TEXT_JUSTIFY_VCENTER
+                    Graphics.TEXT_JUSTIFY_CENTER 
                 );
             }
 
@@ -901,12 +879,6 @@ class GoalsView extends WatchUi.DataField {
             // Draw value + units centered horizontally
             var totalWidth = widthValue + widthUnits;
             var startX = centerX - totalWidth / 2;
-            // var justify = Graphics.TEXT_JUSTIFY_LEFT;
-            // if (widthUnits == 0) {
-            //     justify =
-            //         Graphics.TEXT_JUSTIFY_CENTER |
-            //         Graphics.TEXT_JUSTIFY_VCENTER;
-            // }
             dc.drawText(
                 startX,
                 startY + labelHeight,
@@ -957,6 +929,500 @@ class GoalsView extends WatchUi.DataField {
     }
 
     //}
+
+    // Configuration Constants
+    private const NUM_BUBBLES = 6;
+    private const EASING_FACTOR = 0.15f; // Smoothness of movement (0.0 - 1.0)
+    private const REPULSION_FACTOR = 0.40f; // Strength of push
+    private var MIN_RADIUS = 8.0f;
+    private var MAX_RADIUS = 28.0f;
+
+    private var currentX as Array<Float> =
+        new [$.gMaxProgressColumns] as Array<Float>;
+    private var currentY as Array<Float> =
+        new [$.gMaxProgressColumns] as Array<Float>;
+    private var currentRadius as Array<Float> =
+        new [$.gMaxProgressColumns] as Array<Float>;
+
+    // Animation timer to force screen refreshes
+    private var animationTimer as Toybox.Timer.Timer? = null;
+    private var bubblesInitialized as Boolean = false;
+    hidden function initBubbleLayout(dc as Graphics.Dc) as Void {
+        var screenH = dc.getHeight();
+        MIN_RADIUS =
+            (dc.getTextWidthInPixels("888", Graphics.FONT_XTINY) + 4) / 2.0f;
+        MAX_RADIUS = (dc.getHeight() / 3.0f).toFloat();
+        if (bubblesInitialized) {
+            return;
+        }
+
+        // Seed initial positions so they don't all pop in at (0,0)
+        for (var i = 0; i < $.gMaxProgressColumns; i++) {
+            currentX[i] = 0.0f;
+            currentY[i] = screenH - MIN_RADIUS; // Start near bottom assuming standard screen
+            currentRadius[i] = MIN_RADIUS;
+        }
+        bubblesInitialized = true;
+        // if (animationTimer == null) {
+
+        // Start a fast timer (e.g., ~30 FPS / 33ms) to drive fluid animation.
+        // Note: Check Garmin device compatibility; some older devices restrict background animation rates.
+        // animationTimer = new Toybox.Timer.Timer();
+        // animationTimer.start(method(:onTimerTick), 33, true);
+        // }
+    }
+
+    // Force a redraw on every timer tick
+    // function onTimerTick() as Void {
+    //     WatchUi.requestUpdate();
+    // }
+    function drawBubbleLayout(
+        dc as Graphics.Dc,
+        x as Number,
+        y as Number,
+        w as Number,
+        h as Number
+    ) as Void {
+        // Clear background (setting?)
+        // var bgColor = getDynamicColor(
+        //     0.3f, // Use a low ratio for background to avoid clashing with bubbles
+        //     mColorScheme
+        // );
+        // dc.setColor(bgColor, Graphics.COLOR_BLACK);
+        // dc.fillRectangle(x, y, w, h);
+
+        var width = w.toFloat();
+        var height = h.toFloat();
+        var centerX = width / 2.0f;
+
+        // CROWD SCALING PRE-PASS ---
+        var totalTargetRadius = 0.0f;
+        var activeCount = 0;
+
+        // 1. Calculate base space the bubbles WANT to take up
+        for (var i = 0; i < $.gMaxProgressColumns; i++) {
+            if (mProgressFields[i] != FTUnknown) {
+                var ratio = mProgressRatios[i];
+                var baseTargetRad =
+                    MIN_RADIUS + ratio * (MAX_RADIUS - MIN_RADIUS);
+                totalTargetRadius += baseTargetRad;
+                activeCount++;
+            }
+        }
+
+        // 2. OVERLAP OVERDRIVE PENALTY ---
+        // If a small circle is inside a big circle's vertical zone, add a footprint penalty
+        // to force BOTH of them to scale down until they fit vertically.
+        for (var i = 0; i < $.gMaxProgressColumns; i++) {
+            if (mProgressFields[i] == FTUnknown || mProgressRatios[i] >= 0.6f) {
+                continue;
+            }
+
+            var smallRatio = mProgressRatios[i];
+            var smallTargetY = height - smallRatio * height;
+            var smallBaseRad =
+                MIN_RADIUS + smallRatio * (MAX_RADIUS - MIN_RADIUS);
+
+            for (var j = 0; j < $.gMaxProgressColumns; j++) {
+                if (
+                    mProgressFields[j] == FTUnknown ||
+                    mProgressRatios[j] < 0.7f ||
+                    i == j
+                ) {
+                    continue;
+                }
+
+                var bigRatio = mProgressRatios[j];
+                var bigTargetY =
+                    bigRatio > 1.0f ? MAX_RADIUS : height - bigRatio * height;
+                var bigBaseRad = MAX_RADIUS;
+
+                var verticalOverlap = (smallTargetY - bigTargetY).abs();
+                var collisionThreshold = bigBaseRad + smallBaseRad;
+
+                // If they are strictly overlapping on top of each other, artificially inflate
+                // totalTargetRadius. This forces the scaleModifier to shrink BOTH circles down.
+                if (verticalOverlap < collisionThreshold) {
+                    var penetrationDepth = collisionThreshold - verticalOverlap;
+                    totalTargetRadius += penetrationDepth * 1.5f; // 1.5f multiplier adds aggressive scaling resistance
+                }
+            }
+        }
+
+        // Define a comfortable vertical budget (e.g., 70% of screen height)
+        var verticalBudget = height * 0.70f;
+        var scaleModifier = 1.0f;
+
+        // If the combined radius exceeds our budget, calculate a shrink factor
+        if (totalTargetRadius > verticalBudget && activeCount > 0) {
+            scaleModifier = verticalBudget / totalTargetRadius;
+
+            // Don't let them shrink past a reasonable floor (e.g., 40% to keep text legible)
+            if (scaleModifier < 0.4f) {
+                scaleModifier = 0.4f;
+            }
+        }
+        // -------------------------------------
+
+        // 1. CALCULATE TARGETS & EASE (Vertical & Size)
+        for (var i = 0; i < $.gMaxProgressColumns; i++) {
+            if (mProgressFields[i] == FTUnknown) {
+                var targetY = height;
+                var targetRad = 0.0f;
+
+                currentY[i] =
+                    currentY[i] + (targetY - currentY[i]) * EASING_FACTOR;
+                currentRadius[i] =
+                    currentRadius[i] +
+                    (targetRad - currentRadius[i]) * EASING_FACTOR;
+                continue;
+            }
+
+            var ratio = mProgressRatios[i];
+
+            // Apply the dynamic scale modifier to the max size constraint
+            var allowedMaxRadius =
+                MIN_RADIUS + scaleModifier * (MAX_RADIUS - MIN_RADIUS);
+            var targetRad =
+                MIN_RADIUS + ratio * (allowedMaxRadius - MIN_RADIUS);
+
+            var targetY;
+            if (ratio > 1.0f) {
+                targetY = targetRad;
+            } else {
+                targetY = height - ratio * height;
+            }
+
+            // --- REVISED: BALANCED HIERARCHICAL PUSH ---
+            // Now that BOTH bubbles have shrunk via the pre-pass, this secondary push
+            // cleanly separates them into their own distinct layout lines without swallowing.
+            if (ratio < 0.6f) {
+                for (var j = 0; j < $.gMaxProgressColumns; j++) {
+                    if (
+                        mProgressFields[j] != FTUnknown &&
+                        mProgressRatios[j] > 0.7f &&
+                        i != j
+                    ) {
+                        var bigRatio = mProgressRatios[j];
+                        var bigTargetY =
+                            bigRatio > 1.0f
+                                ? allowedMaxRadius
+                                : height - bigRatio * height;
+                        var bigTargetRad = allowedMaxRadius;
+
+                        var verticalOverlap = (targetY - bigTargetY).abs();
+                        var crowdingThreshold = bigTargetRad + targetRad;
+
+                        if (verticalOverlap < crowdingThreshold) {
+                            var pushedY =
+                                bigTargetY + bigTargetRad + targetRad + 4.0f;
+                            if (pushedY < height - targetRad) {
+                                targetY = pushedY;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Smoothly interpolate (Lerp) toward targets
+            currentY[i] = currentY[i] + (targetY - currentY[i]) * EASING_FACTOR;
+            currentRadius[i] =
+                currentRadius[i] +
+                (targetRad - currentRadius[i]) * EASING_FACTOR;
+
+            // Calculate a unique "home" X column for each bubble so they don't all fight for the center line
+            // This spreads the base targets evenly across the inner 60% of the field width
+            var spreadWidth = width * 0.90f;
+            var leftBound = (width - spreadWidth) / 2.0f;
+            var homeX =
+                leftBound +
+                (i.toFloat() / ($.gMaxProgressColumns - 1).toFloat()) *
+                    spreadWidth;
+
+            // Gently ease towards their individual home columns instead of the exact center
+            currentX[i] = currentX[i] + (homeX - currentX[i]) * 0.05f;
+        }
+
+        // 2. 2D VECTOR REPULSION (With Anti-Stacking Symmetry Breaker)
+        for (var i = 0; i < $.gMaxProgressColumns; i++) {
+            if (mProgressFields[i] == FTUnknown) {
+                continue;
+            }
+
+            for (var j = i + 1; j < $.gMaxProgressColumns; j++) {
+                if (mProgressFields[j] == FTUnknown) {
+                    continue;
+                }
+
+                var dx = currentX[i] - currentX[j];
+                var dy = currentY[i] - currentY[j];
+
+                var distanceSq = dx * dx + dy * dy;
+                var combinedRadius = currentRadius[i] + currentRadius[j];
+                var combinedRadiusSq = combinedRadius * combinedRadius;
+
+                if (distanceSq < combinedRadiusSq) {
+                    var distance = Math.sqrt(distanceSq);
+
+                    // --- NEW: ANTI-STACKING SYMMETRY BREAKER ---
+                    // If dx is almost 0, the circles are perfectly stacked vertically,
+                    // causing the horizontal repulsion vector to lock up.
+                    if (dx.abs() < 2.0f) {
+                        // Inject a distinct horizontal nudge based on their index odd/evenness
+                        // to force them to slide off each other sideways.
+                        var nudge = i % 2 == 0 ? 3.0f : -3.0f;
+                        dx += nudge;
+                        // Recalculate distance parameters with the new nudge
+                        distanceSq = dx * dx + dy * dy;
+                        distance = Math.sqrt(distanceSq);
+                    }
+                    // --------------------------------------------
+
+                    if (distance == 0.0f) {
+                        distance = 1.0f;
+                    }
+
+                    var overlap = combinedRadius - distance;
+
+                    var forceX = (dx / distance) * overlap * REPULSION_FACTOR;
+                    var forceY = (dy / distance) * overlap * REPULSION_FACTOR;
+
+                    currentX[i] += forceX;
+                    currentY[i] += forceY;
+
+                    currentX[j] -= forceX;
+                    currentY[j] -= forceY;
+                }
+            }
+        }
+
+        // 3. BOUNDARY CLIPPING & RENDER (Pass 1: Draw Large Circles First)
+        for (var i = 0; i < $.gMaxProgressColumns; i++) {
+            if (mProgressRatios[i] < 0.6f) {
+                continue;
+            } // Skip small ones for now
+            drawSingleBubble(dc, i, width.toNumber(), height.toNumber());
+        }
+
+        // 3. BOUNDARY CLIPPING & RENDER (Pass 2: Draw Small Circles On Top)
+        for (var i = 0; i < $.gMaxProgressColumns; i++) {
+            if (mProgressRatios[i] >= 0.6f) {
+                continue;
+            } // Large ones already drawn
+            drawSingleBubble(dc, i, width.toNumber(), height.toNumber());
+        }
+    }
+
+    function drawSingleBubble(
+        dc as Graphics.Dc,
+        index as Number,
+        width as Number,
+        height as Number
+    ) as Void {
+        if (
+            mProgressFields[index] == FTUnknown &&
+            currentRadius[index] < 1.0f
+        ) {
+            return; // Skip empty bubbles
+        }
+
+        var bubbleRadius = currentRadius[index];
+        var bubbleX = currentX[index];
+        var bubbleY = currentY[index];
+
+        // Bound containment
+        if (bubbleX < bubbleRadius) {
+            bubbleX = bubbleRadius;
+        }
+        if (bubbleX > width - bubbleRadius) {
+            bubbleX = width - bubbleRadius;
+        }
+        if (bubbleY < bubbleRadius) {
+            bubbleY = bubbleRadius;
+        }
+        if (bubbleY > height - bubbleRadius) {
+            bubbleY = height - bubbleRadius;
+        }
+
+        // Draw bubble body
+        var bubbleColor = mProgressColors[index];
+        dc.setColor(bubbleColor, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(
+            bubbleX.toNumber(),
+            bubbleY.toNumber(),
+            bubbleRadius.toNumber()
+        );
+
+        // Accent ring
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawCircle(
+            bubbleX.toNumber(),
+            bubbleY.toNumber(),
+            bubbleRadius.toNumber()
+        );
+
+        var showLabels =
+            mFieldShowLabels || mShowDetailsOnPause || mShowDetailsOn0Cadence;
+        var showValues =
+            mFieldShowValues || mShowDetailsOnPause || mShowDetailsOn0Cadence;
+        if (!showLabels && !showValues) {
+            return; // No text to render
+        }
+        var fieldType = mProgressFields[index];
+        var focusField = isFocusField(fieldType);
+        var label = showLabels || focusField ? getFieldLabel(fieldType) : "";
+        var valueText = "";
+        if (showValues || focusField) {
+            if (mDemoMode) {
+                valueText = getDemoValue(index).format("%.0f") + " %";
+            } else {
+                valueText = getFormattedValue(
+                    mProgress.getProgressFieldValue(fieldType),
+                    fieldType,
+                    true
+                );
+            }
+        }
+
+        var hasLabel = label.length() > 0;
+        var hasValue = valueText.length() > 0;
+        if (!hasLabel && !hasValue) {
+            return; // Nothing to draw
+        }
+
+        if ($.isColorLight(bubbleColor)) {
+            dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+        } else {
+            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        }
+
+        var font = Graphics.FONT_XTINY;
+        var centerX = bubbleX.toNumber();
+        var centerY = bubbleY.toNumber();
+        if (!hasValue) {
+            if (bubbleRadius > 12.0f) {
+                // Render text only if the bubble is big enough to display it cleanly
+                // Only label to show, center it vertically and horizontally
+                dc.drawText(
+                    centerX,
+                    centerY,
+                    font,
+                    label,
+                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER
+                );
+            }
+            return;
+        }
+
+        // label and valueText (with units)
+        var startY = centerY;
+
+        var labelHeight = 0;
+        var unitHeight = 0;
+        if (hasLabel) {
+            labelHeight = dc.getFontHeight(font);
+        }
+
+        var widthUnits = 0;
+        var units = "";
+        var hasUnits = false;
+        var valueOnly = valueText;
+        // split to allow for different font sizes
+        // number<space>units
+        var posSpace = valueText.find(" ");
+        if (posSpace != null) {
+            font = Graphics.FONT_XTINY;
+            valueOnly = valueText.substring(0, posSpace);
+            units = valueText.substring(posSpace + 1, null);
+            widthUnits = dc.getTextWidthInPixels(units, font);
+            unitHeight = dc.getFontHeight(font);
+            hasUnits = units != null && units.length() > 0;
+        }
+
+        // Same logic as drawSegment portrait.
+        var bubbleHeight = (2 * bubbleRadius - 4).toNumber();
+        var bubbleWidth = (2 * bubbleRadius - 4).toNumber();
+        var fontValue =
+            $.getMatchingFont(
+                dc,
+                mFontsNumbers,
+                bubbleHeight - 4 - labelHeight - unitHeight,
+                bubbleWidth - 4,
+                valueText
+            ) as Graphics.FontType;
+        var valueHeight = dc.getFontHeight(fontValue);
+
+        // Draw label, value and units stacked vertically
+        startY = centerY - (labelHeight + valueHeight + unitHeight) / 2;
+        if (bubbleHeight < labelHeight + valueHeight + unitHeight) {
+            // Label doesn't fit, so remove it and center the value and units text vertically
+            label = null;
+            labelHeight = 0;
+            hasLabel = false;
+            startY = centerY - (valueHeight + unitHeight) / 2;
+        }
+        if (bubbleHeight < valueHeight + unitHeight) {
+            // Units don't fit, so remove them and center the value text vertically
+            units = null;
+            unitHeight = 0;
+            hasUnits = false;
+            startY = centerY - valueHeight / 2;
+        }
+
+        var widthValue = dc.getTextWidthInPixels(valueOnly, fontValue);
+
+        // Draw value and units stacked vertically
+        // and only if it fits within the rectangle width:
+        // label+value+unit | label | label+value | value+unit | value
+
+        // First do the checks
+        if (widthValue >= bubbleWidth - 4) {
+            // Truncate the value text to fit within the available width
+            valueOnly = truncateDecimals(
+                dc,
+                valueOnly,
+                fontValue,
+                bubbleWidth - 4
+            );
+            widthValue = dc.getTextWidthInPixels(valueOnly, fontValue);
+        }
+        // Will value fit?
+        hasValue = widthValue < bubbleWidth - 4;
+        // Will units fit?
+        hasUnits = hasValue && hasUnits && widthUnits < bubbleWidth - 4;
+        // Adjust the label position based on whether value and units were drawn
+        valueHeight = hasValue ? valueHeight : 0;
+        unitHeight = hasUnits ? unitHeight : 0;
+        startY = centerY - (labelHeight + valueHeight + unitHeight) / 2;
+
+        if (hasLabel) {
+            dc.drawText(
+                centerX,
+                startY,
+                font,
+                label,
+                Graphics.TEXT_JUSTIFY_CENTER //| Graphics.TEXT_JUSTIFY_VCENTER
+            );
+        }
+        if (hasValue) {
+            dc.drawText(
+                centerX,
+                startY + labelHeight,
+                fontValue,
+                valueOnly,
+                Graphics.TEXT_JUSTIFY_CENTER //| Graphics.TEXT_JUSTIFY_VCENTER
+            );
+            if (hasUnits) {
+                dc.drawText(
+                    centerX,
+                    startY + labelHeight + valueHeight,
+                    font,
+                    units,
+                    Graphics.TEXT_JUSTIFY_CENTER //| Graphics.TEXT_JUSTIFY_VCENTER
+                );
+            }
+        }
+    }
 
     // Inside your View class...
     function drawRadialGauges(dc) {
