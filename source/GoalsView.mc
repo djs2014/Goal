@@ -726,7 +726,7 @@ class GoalsView extends WatchUi.DataField {
 
         // label and valueText (with units)
         var startY = centerY;
-        var isPortrait = sh > sw;
+        var isPortrait = sh >= sw;
         var labelHeight = 0;
         var unitHeight = 0;
         if (hasLabel) {
@@ -744,7 +744,7 @@ class GoalsView extends WatchUi.DataField {
         if (posSpace != null) {
             font = Graphics.FONT_XTINY;
             valueOnly = valueText.substring(0, posSpace);
-            units = valueText.substring(posSpace +1, null);
+            units = valueText.substring(posSpace + 1, null);
             widthUnits = dc.getTextWidthInPixels(units, font);
             unitHeight = dc.getFontHeight(font);
             hasUnits = units != null && units.length() > 0;
@@ -863,7 +863,7 @@ class GoalsView extends WatchUi.DataField {
                     startY,
                     font,
                     label,
-                    Graphics.TEXT_JUSTIFY_CENTER 
+                    Graphics.TEXT_JUSTIFY_CENTER
                 );
             }
 
@@ -983,23 +983,14 @@ class GoalsView extends WatchUi.DataField {
         w as Number,
         h as Number
     ) as Void {
-        // Clear background (setting?)
-        // var bgColor = getDynamicColor(
-        //     0.3f, // Use a low ratio for background to avoid clashing with bubbles
-        //     mColorScheme
-        // );
-        // dc.setColor(bgColor, Graphics.COLOR_BLACK);
-        // dc.fillRectangle(x, y, w, h);
-
         var width = w.toFloat();
         var height = h.toFloat();
-        var centerX = width / 2.0f;
 
-        // CROWD SCALING PRE-PASS ---
+        // --- CROWD SCALING PRE-PASS ---
+        // Dynamically shrink ALL bubbles when multiple circles have high ratios
         var totalTargetRadius = 0.0f;
         var activeCount = 0;
 
-        // 1. Calculate base space the bubbles WANT to take up
         for (var i = 0; i < $.gMaxProgressColumns; i++) {
             if (mProgressFields[i] != FTUnknown) {
                 var ratio = mProgressRatios[i];
@@ -1010,205 +1001,147 @@ class GoalsView extends WatchUi.DataField {
             }
         }
 
-        // 2. OVERLAP OVERDRIVE PENALTY ---
-        // If a small circle is inside a big circle's vertical zone, add a footprint penalty
-        // to force BOTH of them to scale down until they fit vertically.
-        for (var i = 0; i < $.gMaxProgressColumns; i++) {
-            if (mProgressFields[i] == FTUnknown || mProgressRatios[i] >= 0.6f) {
-                continue;
-            }
-
-            var smallRatio = mProgressRatios[i];
-            var smallTargetY = height - smallRatio * height;
-            var smallBaseRad =
-                MIN_RADIUS + smallRatio * (MAX_RADIUS - MIN_RADIUS);
-
-            for (var j = 0; j < $.gMaxProgressColumns; j++) {
-                if (
-                    mProgressFields[j] == FTUnknown ||
-                    mProgressRatios[j] < 0.7f ||
-                    i == j
-                ) {
-                    continue;
-                }
-
-                var bigRatio = mProgressRatios[j];
-                var bigTargetY =
-                    bigRatio > 1.0f ? MAX_RADIUS : height - bigRatio * height;
-                var bigBaseRad = MAX_RADIUS;
-
-                var verticalOverlap = (smallTargetY - bigTargetY).abs();
-                var collisionThreshold = bigBaseRad + smallBaseRad;
-
-                // If they are strictly overlapping on top of each other, artificially inflate
-                // totalTargetRadius. This forces the scaleModifier to shrink BOTH circles down.
-                if (verticalOverlap < collisionThreshold) {
-                    var penetrationDepth = collisionThreshold - verticalOverlap;
-                    totalTargetRadius += penetrationDepth * 1.5f; // 1.5f multiplier adds aggressive scaling resistance
-                }
-            }
-        }
-
-        // Define a comfortable vertical budget (e.g., 70% of screen height)
-        var verticalBudget = height * 0.70f;
+        // Vertical space budget (e.g., 65% of screen height) to trigger group shrinking
+        var verticalBudget = height * 0.65f;
         var scaleModifier = 1.0f;
 
-        // If the combined radius exceeds our budget, calculate a shrink factor
-        if (totalTargetRadius > verticalBudget && activeCount > 0) {
+        if (totalTargetRadius > verticalBudget && activeCount > 1) {
             scaleModifier = verticalBudget / totalTargetRadius;
-
-            // Don't let them shrink past a reasonable floor (e.g., 40% to keep text legible)
-            if (scaleModifier < 0.4f) {
-                scaleModifier = 0.4f;
+            if (scaleModifier < 0.45f) {
+                scaleModifier = 0.45f; // Protect minimum text readability bounds
             }
         }
-        // -------------------------------------
 
-        // 1. CALCULATE TARGETS & EASE (Vertical & Size)
+        // --- STEP 1: RESOLVE SIZE & HORIZONTAL HOME / VERTICAL BUOYANCY ARCS ---
         for (var i = 0; i < $.gMaxProgressColumns; i++) {
             if (mProgressFields[i] == FTUnknown) {
-                var targetY = height;
-                var targetRad = 0.0f;
-
-                currentY[i] =
-                    currentY[i] + (targetY - currentY[i]) * EASING_FACTOR;
                 currentRadius[i] =
                     currentRadius[i] +
-                    (targetRad - currentRadius[i]) * EASING_FACTOR;
+                    (0.0f - currentRadius[i]) * EASING_FACTOR;
+                currentY[i] =
+                    currentY[i] + (height - currentY[i]) * EASING_FACTOR;
                 continue;
             }
 
             var ratio = mProgressRatios[i];
 
-            // Apply the dynamic scale modifier to the max size constraint
+            // 1a. Calculate current frame allowed dynamic radius
             var allowedMaxRadius =
                 MIN_RADIUS + scaleModifier * (MAX_RADIUS - MIN_RADIUS);
             var targetRad =
                 MIN_RADIUS + ratio * (allowedMaxRadius - MIN_RADIUS);
-
-            var targetY;
-            if (ratio > 1.0f) {
-                targetY = targetRad;
-            } else {
-                targetY = height - ratio * height;
-            }
-
-            // --- REVISED: BALANCED HIERARCHICAL PUSH ---
-            // Now that BOTH bubbles have shrunk via the pre-pass, this secondary push
-            // cleanly separates them into their own distinct layout lines without swallowing.
-            if (ratio < 0.6f) {
-                for (var j = 0; j < $.gMaxProgressColumns; j++) {
-                    if (
-                        mProgressFields[j] != FTUnknown &&
-                        mProgressRatios[j] > 0.7f &&
-                        i != j
-                    ) {
-                        var bigRatio = mProgressRatios[j];
-                        var bigTargetY =
-                            bigRatio > 1.0f
-                                ? allowedMaxRadius
-                                : height - bigRatio * height;
-                        var bigTargetRad = allowedMaxRadius;
-
-                        var verticalOverlap = (targetY - bigTargetY).abs();
-                        var crowdingThreshold = bigTargetRad + targetRad;
-
-                        if (verticalOverlap < crowdingThreshold) {
-                            var pushedY =
-                                bigTargetY + bigTargetRad + targetRad + 4.0f;
-                            if (pushedY < height - targetRad) {
-                                targetY = pushedY;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Smoothly interpolate (Lerp) toward targets
-            currentY[i] = currentY[i] + (targetY - currentY[i]) * EASING_FACTOR;
             currentRadius[i] =
                 currentRadius[i] +
                 (targetRad - currentRadius[i]) * EASING_FACTOR;
 
-            // Calculate a unique "home" X column for each bubble so they don't all fight for the center line
-            // This spreads the base targets evenly across the inner 60% of the field width
-            var spreadWidth = width * 0.90f;
+            // 1b. Guide X to its native horizontal home lane
+            var spreadWidth = width * 0.85f;
             var leftBound = (width - spreadWidth) / 2.0f;
             var homeX =
                 leftBound +
                 (i.toFloat() / ($.gMaxProgressColumns - 1).toFloat()) *
                     spreadWidth;
+            currentX[i] = currentX[i] + (homeX - currentX[i]) * 0.05f; // Mild tracking speed lets physics take over
 
-            // Gently ease towards their individual home columns instead of the exact center
-            currentX[i] = currentX[i] + (homeX - currentX[i]) * 0.05f;
-        }
-
-        // 2. 2D VECTOR REPULSION (With Anti-Stacking Symmetry Breaker)
-        for (var i = 0; i < $.gMaxProgressColumns; i++) {
-            if (mProgressFields[i] == FTUnknown) {
-                continue;
+            // 1c. Upward Buoyancy Force (Instead of rigid target assignment)
+            // Instead of overriding Y completely, we see where it wants to sit based on ratio,
+            // and gently float it up or down toward that zone, allowing collisions to alter the true path.
+            var targetY = height - ratio * height;
+            if (ratio > 1.0f) {
+                targetY = currentRadius[i]; // Stay capped at the top boundary
+            } else if (ratio == 0.0f) {
+                targetY = height - currentRadius[i]; // Bottom floor
             }
 
-            for (var j = i + 1; j < $.gMaxProgressColumns; j++) {
-                if (mProgressFields[j] == FTUnknown) {
+            // Apply buoyancy vector drift rather than snapping
+            currentY[i] = currentY[i] + (targetY - currentY[i]) * 0.08f;
+        }
+
+        // --- STEP 2: MULTI-PASS 2D VECTOR REPULSION (Solves Grouping) ---
+        // Running physics twice per render frame completely eliminates grouping deadlocks
+        // and instantly flings smaller circles downwards or outwards from behind large ones.
+        for (var pass = 0; pass < 2; pass++) {
+            for (var i = 0; i < $.gMaxProgressColumns; i++) {
+                if (mProgressFields[i] == FTUnknown) {
                     continue;
                 }
 
-                var dx = currentX[i] - currentX[j];
-                var dy = currentY[i] - currentY[j];
-
-                var distanceSq = dx * dx + dy * dy;
-                var combinedRadius = currentRadius[i] + currentRadius[j];
-                var combinedRadiusSq = combinedRadius * combinedRadius;
-
-                if (distanceSq < combinedRadiusSq) {
-                    var distance = Math.sqrt(distanceSq);
-
-                    // --- NEW: ANTI-STACKING SYMMETRY BREAKER ---
-                    // If dx is almost 0, the circles are perfectly stacked vertically,
-                    // causing the horizontal repulsion vector to lock up.
-                    if (dx.abs() < 2.0f) {
-                        // Inject a distinct horizontal nudge based on their index odd/evenness
-                        // to force them to slide off each other sideways.
-                        var nudge = i % 2 == 0 ? 3.0f : -3.0f;
-                        dx += nudge;
-                        // Recalculate distance parameters with the new nudge
-                        distanceSq = dx * dx + dy * dy;
-                        distance = Math.sqrt(distanceSq);
-                    }
-                    // --------------------------------------------
-
-                    if (distance == 0.0f) {
-                        distance = 1.0f;
+                for (var j = i + 1; j < $.gMaxProgressColumns; j++) {
+                    if (mProgressFields[j] == FTUnknown) {
+                        continue;
                     }
 
-                    var overlap = combinedRadius - distance;
+                    var dx = currentX[i] - currentX[j];
+                    var dy = currentY[i] - currentY[j];
 
-                    var forceX = (dx / distance) * overlap * REPULSION_FACTOR;
-                    var forceY = (dy / distance) * overlap * REPULSION_FACTOR;
+                    var distanceSq = dx * dx + dy * dy;
+                    var combinedRadius = currentRadius[i] + currentRadius[j];
+                    var combinedRadiusSq = combinedRadius * combinedRadius;
 
-                    currentX[i] += forceX;
-                    currentY[i] += forceY;
+                    if (distanceSq < combinedRadiusSq) {
+                        var distance = Math.sqrt(distanceSq);
 
-                    currentX[j] -= forceX;
-                    currentY[j] -= forceY;
+                        // Symmetry breaker if circles share exact identical positions
+                        if (distance == 0.0f) {
+                            distance = 1.0f;
+                            dx = i % 2 == 0 ? 2.0f : -2.0f;
+                            dy = 1.0f;
+                        }
+
+                        var overlap = combinedRadius - distance;
+
+                        // Calculate directional physics impact vectors
+                        var forceX =
+                            (dx / distance) * overlap * REPULSION_FACTOR;
+                        var forceY =
+                            (dy / distance) * overlap * REPULSION_FACTOR;
+
+                        // Distribute the pushing forces cleanly across both coordinates
+                        currentX[i] += forceX;
+                        currentY[i] += forceY;
+
+                        currentX[j] -= forceX;
+                        currentY[j] -= forceY;
+                    }
+                }
+            }
+
+            // Enforce screen border boundaries *during* physics loops so circles don't bounce out of view
+            for (var i = 0; i < $.gMaxProgressColumns; i++) {
+                if (mProgressFields[i] == FTUnknown) {
+                    continue;
+                }
+                var rad = currentRadius[i];
+
+                if (currentX[i] < rad) {
+                    currentX[i] = rad;
+                }
+                if (currentX[i] > width - rad) {
+                    currentX[i] = width - rad;
+                }
+                if (currentY[i] < rad) {
+                    currentY[i] = rad;
+                }
+                if (currentY[i] > height - rad) {
+                    currentY[i] = height - rad;
                 }
             }
         }
 
-        // 3. BOUNDARY CLIPPING & RENDER (Pass 1: Draw Large Circles First)
+        // --- STEP 3: DUAL PASS RENDER ARCHITECTURE ---
+        // Background layer: Draw big dominant circles first
         for (var i = 0; i < $.gMaxProgressColumns; i++) {
             if (mProgressRatios[i] < 0.6f) {
                 continue;
-            } // Skip small ones for now
+            }
             drawSingleBubble(dc, i, width.toNumber(), height.toNumber());
         }
 
-        // 3. BOUNDARY CLIPPING & RENDER (Pass 2: Draw Small Circles On Top)
+        // Foreground layer: Draw smaller fields floating clearly on top
         for (var i = 0; i < $.gMaxProgressColumns; i++) {
             if (mProgressRatios[i] >= 0.6f) {
                 continue;
-            } // Large ones already drawn
+            }
             drawSingleBubble(dc, i, width.toNumber(), height.toNumber());
         }
     }
@@ -1261,18 +1194,24 @@ class GoalsView extends WatchUi.DataField {
             bubbleRadius.toNumber()
         );
 
+        var fieldType = mProgressFields[index];
+        var focusField = isFocusField(fieldType);
         var showLabels =
-            mFieldShowLabels || mShowDetailsOnPause || mShowDetailsOn0Cadence;
+            mFieldShowLabels ||
+            mShowDetailsOnPause ||
+            mShowDetailsOn0Cadence ||
+            focusField;
         var showValues =
-            mFieldShowValues || mShowDetailsOnPause || mShowDetailsOn0Cadence;
+            mFieldShowValues ||
+            mShowDetailsOnPause ||
+            mShowDetailsOn0Cadence ||
+            focusField;
         if (!showLabels && !showValues) {
             return; // No text to render
         }
-        var fieldType = mProgressFields[index];
-        var focusField = isFocusField(fieldType);
-        var label = showLabels || focusField ? getFieldLabel(fieldType) : "";
+        var label = showLabels ? getFieldLabel(fieldType) : "";
         var valueText = "";
-        if (showValues || focusField) {
+        if (showValues) {
             if (mDemoMode) {
                 valueText = getDemoValue(index).format("%.0f") + " %";
             } else {
