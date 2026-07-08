@@ -84,6 +84,7 @@ class GoalsView extends WatchUi.DataField {
     hidden var mFieldColumnGap as Number = 8;
     hidden var mFieldDivider as Number = 80;
     hidden var mFieldShowFocus as Boolean = false;
+    hidden var mFieldShowStamina as StaminaBar = SBNone;
 
     function onLayout(dc as Graphics.Dc) as Void {
         mCurrentEdgeField = $.getEdgeField(dc);
@@ -92,26 +93,26 @@ class GoalsView extends WatchUi.DataField {
         if (mCurrentEdgeField == EfOne) {
             showFields =
                 $.getStorageValue("show_one_field", [$.gShowFieldsArraySize]) as
-                Array<Numeric or FieldLayout or Boolean>;
+                Array<Numeric or FieldLayout or Boolean or StaminaBar>;
         } else if (mCurrentEdgeField == EfLarge) {
             showFields =
                 $.getStorageValue("show_large_field", [
                     $.gShowFieldsArraySize,
-                ]) as Array<Numeric or FieldLayout or Boolean>;
+                ]) as Array<Numeric or FieldLayout or Boolean or StaminaBar>;
         } else if (mCurrentEdgeField == EfWide) {
             showFields =
                 $.getStorageValue("show_wide_field", [
                     $.gShowFieldsArraySize,
-                ]) as Array<Numeric or FieldLayout or Boolean>;
+                ]) as Array<Numeric or FieldLayout or Boolean or StaminaBar>;
         } else if (mCurrentEdgeField == EfSmall) {
             showFields =
                 $.getStorageValue("show_small_field", [
                     $.gShowFieldsArraySize,
-                ]) as Array<Numeric or FieldLayout or Boolean>;
+                ]) as Array<Numeric or FieldLayout or Boolean or StaminaBar>;
         } else {
             showFields =
                 $.getStorageValue("show_one_field", [$.gShowFieldsArraySize]) as
-                Array<Numeric or FieldLayout or Boolean>;
+                Array<Numeric or FieldLayout or Boolean or StaminaBar>;
         }
 
         // $.logInfo(["edgeField:", mCurrentEdgeField, "showFields:", showFields]);
@@ -122,6 +123,10 @@ class GoalsView extends WatchUi.DataField {
         mFieldColumnGap = showFields[3] as Number;
         mFieldDivider = showFields[4] as Number;
         mFieldShowFocus = showFields[5] == true && $.gFocusFieldCount > 0;
+        mFieldShowStamina = SBNone;
+        if ($.gStaminaBarHeight > 0) {
+            mFieldShowStamina = showFields[6] as StaminaBar;
+        }
 
         mProgressFields =
             showFields.slice($.gPreambleFieldCount, null) as Array<FieldType>;
@@ -180,6 +185,8 @@ class GoalsView extends WatchUi.DataField {
             var power = $.getActivityValue(info, :currentPower, 0) as Number;
             var np = mNormPowerEngine.compute(power);
             mProgress.setNormalizedPower(np);
+
+            $.gAnaerobicWork.updateWPrime(info);
 
             // Calculate for all fieldTypes the value
             mProgress.updateProgressFieldValues(info);
@@ -400,7 +407,11 @@ class GoalsView extends WatchUi.DataField {
         dc.clear();
 
         var screenW = dc.getWidth();
-        var screenH = dc.getHeight();
+        var screenH = dc.getHeight(); 
+        if (mFieldShowStamina != SBNone) {
+            // Reserve space for the stamina bar at the bottom of the screen
+            screenH -= $.gStaminaBarHeight;
+        }
 
         // Only defined fields
         var numBars = getValidFieldCount();
@@ -473,23 +484,21 @@ class GoalsView extends WatchUi.DataField {
                 break;
 
             case FLProportional:
-                drawProportionalGrid(
-                    dc,
-                    1,
-                    1,
-                    dc.getWidth() - 2,
-                    dc.getHeight() - 2
-                );
+                drawProportionalGrid(dc, 1, 1, screenW - 2, screenH - 2);
                 break;
             case FLBubbles:
-                drawBubbleLayout(
-                    dc,
-                    1,
-                    1,
-                    dc.getWidth() - 2,
-                    dc.getHeight() - 2
-                );
+                drawBubbleLayout(dc, 1, 1, screenW - 2, screenH - 2);
                 break;
+        }
+        if (mFieldShowStamina != SBNone) {
+            drawStaminaProgressBar(
+                dc,
+                0,
+                screenH, // already subtracted the height of the stamina bar from screenH above
+                screenW,
+                $.gStaminaBarHeight,
+                mFieldShowStamina
+            );
         }
     }
 
@@ -949,9 +958,13 @@ class GoalsView extends WatchUi.DataField {
     private var bubblesInitialized as Boolean = false;
     hidden function initBubbleLayout(dc as Graphics.Dc) as Void {
         var screenH = dc.getHeight();
+        if (mFieldShowStamina != SBNone) {
+            // Reserve space for the stamina bar at the bottom of the screen
+            screenH -= $.gStaminaBarHeight;
+        }
         MIN_RADIUS =
             (dc.getTextWidthInPixels("888", Graphics.FONT_XTINY) + 4) / 2.0f;
-        MAX_RADIUS = (dc.getHeight() / 3.0f).toFloat();
+        MAX_RADIUS = (screenH / 3.0f).toFloat();
         if (bubblesInitialized) {
             return;
         }
@@ -1364,164 +1377,164 @@ class GoalsView extends WatchUi.DataField {
     }
 
     // Inside your View class...
-    function drawRadialGauges(dc) {
-        var centerX = dc.getWidth() / 2;
-        var centerY = dc.getHeight() / 2;
+    // function drawRadialGauges(dc) {
+    //     var centerX = dc.getWidth() / 2;
+    //     var centerY = dc.getHeight() / 2;
 
-        // 1. Define your array of ratios (e.g., 5 metrics)
-        // var ratios = [0.85, 0.42, 1.0, 0.15, 0.67];
-        var ratios = mProgressRatios; // Use the actual progress values from mProgressRatios
-        var numMetrics = ratios.size();
+    //     // 1. Define your array of ratios (e.g., 5 metrics)
+    //     // var ratios = [0.85, 0.42, 1.0, 0.15, 0.67];
+    //     var ratios = mProgressRatios; // Use the actual progress values from mProgressRatios
+    //     var numMetrics = ratios.size();
 
-        // 2. Center hub styling
-        var hubRadius = 15;
-        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
-        dc.fillCircle(centerX, centerY, hubRadius);
+    //     // 2. Center hub styling
+    //     var hubRadius = 15;
+    //     dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+    //     dc.fillCircle(centerX, centerY, hubRadius);
 
-        // 3. Spacing setup
-        var baseRadius = hubRadius + 12; // Start just outside the hub
-        var ringSpacing = 16; // Distance between each arc layer
-        var dotRadius = 4; // Size of the indicator circle at the end
+    //     // 3. Spacing setup
+    //     var baseRadius = hubRadius + 12; // Start just outside the hub
+    //     var ringSpacing = 16; // Distance between each arc layer
+    //     var dotRadius = 4; // Size of the indicator circle at the end
 
-        // Define the sweep direction (e.g., from 180° clockwise to 0°)
-        var startAngleDeg = 180;
-        var maxSweepDeg = 180; // A half-circle gauge. Change to 360 for full circles.
+    //     // Define the sweep direction (e.g., from 180° clockwise to 0°)
+    //     var startAngleDeg = 180;
+    //     var maxSweepDeg = 180; // A half-circle gauge. Change to 360 for full circles.
 
-        for (var i = 0; i < numMetrics; i++) {
-            var colorRatio = mProgressColors[i]; // Use the color corresponding to this metric
-            var ratio = ratios[i];
+    //     for (var i = 0; i < numMetrics; i++) {
+    //         var colorRatio = mProgressColors[i]; // Use the color corresponding to this metric
+    //         var ratio = ratios[i];
 
-            // Ensure ratio stays within bounds
-            if (ratio > 1.0) {
-                ratio = 1.0;
-            }
-            if (ratio < 0.0) {
-                ratio = 0.0;
-            }
+    //         // Ensure ratio stays within bounds
+    //         if (ratio > 1.0) {
+    //             ratio = 1.0;
+    //         }
+    //         if (ratio < 0.0) {
+    //             ratio = 0.0;
+    //         }
 
-            // Calculate the unique radius for this specific layer
-            var currentRadius = baseRadius + i * ringSpacing;
+    //         // Calculate the unique radius for this specific layer
+    //         var currentRadius = baseRadius + i * ringSpacing;
 
-            // Calculate the end angle in degrees for dc.drawArc
-            // Because Garmin arcs go counter-clockwise, subtracting the sweep
-            // makes the arc grow clockwise from the left (180°).
-            var endAngleDeg = startAngleDeg - ratio * maxSweepDeg;
+    //         // Calculate the end angle in degrees for dc.drawArc
+    //         // Because Garmin arcs go counter-clockwise, subtracting the sweep
+    //         // makes the arc grow clockwise from the left (180°).
+    //         var endAngleDeg = startAngleDeg - ratio * maxSweepDeg;
 
-            // --- Step A: Draw the Arc ---
-            dc.setPenWidth(2); // Adjust thickness as needed
-            dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-            // Optional: Draw a faint background track for context
-            dc.drawArc(
-                centerX,
-                centerY,
-                currentRadius,
-                Graphics.ARC_CLOCKWISE,
-                startAngleDeg,
-                startAngleDeg - maxSweepDeg
-            );
+    //         // --- Step A: Draw the Arc ---
+    //         dc.setPenWidth(2); // Adjust thickness as needed
+    //         dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+    //         // Optional: Draw a faint background track for context
+    //         dc.drawArc(
+    //             centerX,
+    //             centerY,
+    //             currentRadius,
+    //             Graphics.ARC_CLOCKWISE,
+    //             startAngleDeg,
+    //             startAngleDeg - maxSweepDeg
+    //         );
 
-            dc.setPenWidth(4); // Adjust thickness as needed
-            dc.setColor(colorRatio, Graphics.COLOR_TRANSPARENT); // Use the color corresponding to this metric
-            if (ratio > 0) {
-                dc.drawArc(
-                    centerX,
-                    centerY,
-                    currentRadius,
-                    Graphics.ARC_CLOCKWISE,
-                    startAngleDeg,
-                    endAngleDeg
-                );
-            }
-            dc.setPenWidth(1); // Reset pen width to default
+    //         dc.setPenWidth(4); // Adjust thickness as needed
+    //         dc.setColor(colorRatio, Graphics.COLOR_TRANSPARENT); // Use the color corresponding to this metric
+    //         if (ratio > 0) {
+    //             dc.drawArc(
+    //                 centerX,
+    //                 centerY,
+    //                 currentRadius,
+    //                 Graphics.ARC_CLOCKWISE,
+    //                 startAngleDeg,
+    //                 endAngleDeg
+    //             );
+    //         }
+    //         dc.setPenWidth(1); // Reset pen width to default
 
-            // --- Step B: Calculate and Draw the Terminal Dot ---
-            // Convert the final degree angle to Radians for standard Math functions
-            var angleRad = endAngleDeg * (Math.PI / 180.0);
+    //         // --- Step B: Calculate and Draw the Terminal Dot ---
+    //         // Convert the final degree angle to Radians for standard Math functions
+    //         var angleRad = endAngleDeg * (Math.PI / 180.0);
 
-            // Calculate X and Y offsets (negating Y because screen coordinates go down)
-            var dotX = centerX + currentRadius * Math.cos(angleRad);
-            var dotY = centerY - currentRadius * Math.sin(angleRad);
+    //         // Calculate X and Y offsets (negating Y because screen coordinates go down)
+    //         var dotX = centerX + currentRadius * Math.cos(angleRad);
+    //         var dotY = centerY - currentRadius * Math.sin(angleRad);
 
-            // Draw the small circle at the end of the arc
-            dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
-            dc.fillCircle(dotX.toNumber(), dotY.toNumber(), dotRadius);
-        }
-    }
+    //         // Draw the small circle at the end of the arc
+    //         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+    //         dc.fillCircle(dotX.toNumber(), dotY.toNumber(), dotRadius);
+    //     }
+    // }
 
-    function drawTriangleGauges(dc) {
-        var width = dc.getWidth();
-        var height = dc.getHeight();
-        var centerX = width / 2;
-        var centerY = height / 2;
+    // function drawTriangleGauges(dc) {
+    //     var width = dc.getWidth();
+    //     var height = dc.getHeight();
+    //     var centerX = width / 2;
+    //     var centerY = height / 2;
 
-        // 1. Setup your metrics (0.0 to 1.0)
-        // var ratios = [0.8, 0.5, 0.9, 0.3, 0.7, 0.4, 1.0, 0.2, 0.6, 0.95];
-        var ratios = mProgressRatios; // Use the actual progress values from mProgressRatios
-        var numMetrics = ratios.size();
+    //     // 1. Setup your metrics (0.0 to 1.0)
+    //     // var ratios = [0.8, 0.5, 0.9, 0.3, 0.7, 0.4, 1.0, 0.2, 0.6, 0.95];
+    //     var ratios = mProgressRatios; // Use the actual progress values from mProgressRatios
+    //     var numMetrics = ratios.size();
 
-        System.println(["drawTriangleGauges: ratios:", ratios]);
-        // Calculate the angular width of each slice (in Radians)
-        var angleStep = (2 * Math.PI) / numMetrics;
+    //     System.println(["drawTriangleGauges: ratios:", ratios]);
+    //     // Calculate the angular width of each slice (in Radians)
+    //     var angleStep = (2 * Math.PI) / numMetrics;
 
-        // 2. Loop through each metric segment
-        for (var i = 0; i < numMetrics; i++) {
-            var colorRatio = mProgressColors[i]; // Use the color corresponding to this metric
-            var ratio = ratios[i];
+    //     // 2. Loop through each metric segment
+    //     for (var i = 0; i < numMetrics; i++) {
+    //         var colorRatio = mProgressColors[i]; // Use the color corresponding to this metric
+    //         var ratio = ratios[i];
 
-            // Target angles for the boundaries of this specific slice
-            var startAngle = i * angleStep;
-            var endAngle = (i + 1) * angleStep;
+    //         // Target angles for the boundaries of this specific slice
+    //         var startAngle = i * angleStep;
+    //         var endAngle = (i + 1) * angleStep;
 
-            // 3. Find the maximum rectangular boundary distance for both angles
-            // This scales the circular distribution into a perfect outer rectangle.
-            var maxRadiusStart = getRectRadius(startAngle, width, height);
-            var maxRadiusEnd = getRectRadius(endAngle, width, height);
+    //         // 3. Find the maximum rectangular boundary distance for both angles
+    //         // This scales the circular distribution into a perfect outer rectangle.
+    //         var maxRadiusStart = getRectRadius(startAngle, width, height);
+    //         var maxRadiusEnd = getRectRadius(endAngle, width, height);
 
-            // Scale the radius dynamically by the metric's ratio
-            var currentRadiusStart = maxRadiusStart * ratio;
-            var currentRadiusEnd = maxRadiusEnd * ratio;
+    //         // Scale the radius dynamically by the metric's ratio
+    //         var currentRadiusStart = maxRadiusStart * ratio;
+    //         var currentRadiusEnd = maxRadiusEnd * ratio;
 
-            // 4. Calculate the two outer vertex points of the triangle
-            var pt1X = centerX + currentRadiusStart * Math.cos(startAngle);
-            var pt1Y = centerY - currentRadiusStart * Math.sin(startAngle); // Negate Y
+    //         // 4. Calculate the two outer vertex points of the triangle
+    //         var pt1X = centerX + currentRadiusStart * Math.cos(startAngle);
+    //         var pt1Y = centerY - currentRadiusStart * Math.sin(startAngle); // Negate Y
 
-            var pt2X = centerX + currentRadiusEnd * Math.cos(endAngle);
-            var pt2Y = centerY - currentRadiusEnd * Math.sin(endAngle); // Negate Y
+    //         var pt2X = centerX + currentRadiusEnd * Math.cos(endAngle);
+    //         var pt2Y = centerY - currentRadiusEnd * Math.sin(endAngle); // Negate Y
 
-            // 5. Draw the metric triangle
-            // Vertex 0 is always the center hub (centerX, centerY)
-            dc.setColor(colorRatio, Graphics.COLOR_TRANSPARENT);
-            dc.fillPolygon([
-                [centerX, centerY],
-                [pt1X.toNumber(), pt1Y.toNumber()],
-                [pt2X.toNumber(), pt2Y.toNumber()],
-            ]);
+    //         // 5. Draw the metric triangle
+    //         // Vertex 0 is always the center hub (centerX, centerY)
+    //         dc.setColor(colorRatio, Graphics.COLOR_TRANSPARENT);
+    //         dc.fillPolygon([
+    //             [centerX, centerY],
+    //             [pt1X.toNumber(), pt1Y.toNumber()],
+    //             [pt2X.toNumber(), pt2Y.toNumber()],
+    //         ]);
 
-            // Optional: Draw a thin wireframe border around the slices for definition
-            dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
-            dc.drawLine(centerX, centerY, pt1X.toNumber(), pt1Y.toNumber());
-            dc.drawLine(
-                pt1X.toNumber(),
-                pt1Y.toNumber(),
-                pt2X.toNumber(),
-                pt2Y.toNumber()
-            );
-        }
-    }
+    //         // Optional: Draw a thin wireframe border around the slices for definition
+    //         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+    //         dc.drawLine(centerX, centerY, pt1X.toNumber(), pt1Y.toNumber());
+    //         dc.drawLine(
+    //             pt1X.toNumber(),
+    //             pt1Y.toNumber(),
+    //             pt2X.toNumber(),
+    //             pt2Y.toNumber()
+    //         );
+    //     }
+    // }
 
     // --- Helper: Intersection of an angle with a bounding rectangle ---
     // This projects a circle outward until it flush-fits a rectangle
-    function getRectRadius(angle, w, h) {
-        var absCos = Math.cos(angle).abs();
-        var absSin = Math.sin(angle).abs();
+    // function getRectRadius(angle, w, h) {
+    //     var absCos = Math.cos(angle).abs();
+    //     var absSin = Math.sin(angle).abs();
 
-        // Determine if the ray hits the top/bottom or left/right walls first
-        if ((w / 2.0) * absSin <= (h / 2.0) * absCos) {
-            return w / 2.0 / absCos;
-        } else {
-            return h / 2.0 / absSin;
-        }
-    }
+    //     // Determine if the ray hits the top/bottom or left/right walls first
+    //     if ((w / 2.0) * absSin <= (h / 2.0) * absCos) {
+    //         return w / 2.0 / absCos;
+    //     } else {
+    //         return h / 2.0 / absSin;
+    //     }
+    // }
 
     // --- Helper: Cycle colors for visual distinction ---
     function getMetricColor(index) {
@@ -2270,6 +2283,81 @@ class GoalsView extends WatchUi.DataField {
         } // mFieldShowLabels || mShowDetailsOnPause)
     }
 
+    hidden function drawStaminaProgressBar(
+        dc as Graphics.Dc,
+        barX as Number,
+        barY as Number,
+        barWidth as Number,
+        barHeight as Number,
+        staminaBar as StaminaBar
+    ) as Void {
+        var ratio;
+        var gaugeColor = 0;
+        if (staminaBar == SBShowStamina) {
+            ratio = $.gAnaerobicWork.getStaminaRatio();
+            gaugeColor = transitionFromTo(
+                255,          // Alpha
+                255, 23, 68,  // Red at 0.0 percent
+                0, 230, 118,  // Green at 1.0 percent
+                ratio
+            );
+        } else if (staminaBar == SBShowFatigue) {
+            ratio = $.gAnaerobicWork.getFatigueRatio();
+            gaugeColor = transitionFromTo(
+                255,           // Alpha
+                40, 160, 220,  // Cool Slate at 0.0 percent
+                255, 50, 0,    // Fiery Red at 1.0 percent
+                ratio
+            );
+        } else {
+            return;
+        }
+                
+        // 2. Draw Trough / Background Track (Dark Gray or Translucent)
+        dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.fillRectangle(barX, barY, barWidth, barHeight);
+        
+        // 4. Calculate Inner Fill Width
+        var fillWidth = (barWidth * ratio).toNumber();
+
+        // 5. Draw Active Fill Bar
+        if (fillWidth > 0) {
+            dc.setColor(gaugeColor, Graphics.COLOR_TRANSPARENT);
+            dc.fillRectangle(barX, barY, fillWidth, barHeight);
+        }
+
+        // 6. Draw Subtle Separator/Border line across top of the bar
+        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+        dc.drawLine(barX, barY, barX + barWidth, barY);
+
+        // 7. Optional Text Centering (If bar height is large enough, e.g. >= 14px)
+        if (barHeight >= 14) {
+            var ratioPercent = (ratio * 100).toNumber().format("%d") + " %";
+            var textWidth = dc.getTextWidthInPixels(ratioPercent, Graphics.FONT_XTINY);
+            // Check if gaugeColor hitting the start of the text
+            var textStartX = barX + (barWidth - textWidth) / 2;
+            if (textStartX < barX + fillWidth) {
+                // Text is overlapping the filled portion, so we need to ensure contrast
+                if ($.isColorLight(gaugeColor)) {
+                    dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+                } else {
+                    dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+                }
+            } else {
+                // Text is fully on the empty portion, so use default text color
+                dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+            }
+            
+            dc.drawText(
+                barX + barWidth / 2,
+                barY + barHeight / 2,
+                Graphics.FONT_XTINY,
+                ratioPercent,
+                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER
+            );
+        }
+    }
+
     hidden var rad2degFactor as Float = 180 / Math.PI; // Conversion factor from radians to degrees
 
     // Parameters:
@@ -2613,6 +2701,10 @@ class GoalsView extends WatchUi.DataField {
                 return value.format("%.2f"); // Intensity Factor is unitless
             case FTTrainingStressScore:
                 return value.format("%.0f"); // TSS is unitless
+            case FTStamina:
+                return value.format("%.0f") + " %"; // Stamina is a percentage
+            case FTFatigue:
+                return value.format("%.0f") + " %"; // Fatigue is a percentage
             default:
                 return value.format("%.2f"); // Default: no conversion
         }
@@ -2705,6 +2797,10 @@ class GoalsView extends WatchUi.DataField {
                 return "IF";
             case FTTrainingStressScore:
                 return "TSS";
+            case FTStamina:
+                return "STA";
+            case FTFatigue:
+                return "FAT";
             default:
                 return "";
         }
@@ -2765,6 +2861,10 @@ class GoalsView extends WatchUi.DataField {
                 return "INTENSITY FACTOR";
             case FTTrainingStressScore:
                 return "TRAINING STRESSSCORE";
+            case FTStamina:
+                return "STAMINA";
+            case FTFatigue:
+                return "FATIGUE";
             default:
                 return "";
         }

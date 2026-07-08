@@ -18,6 +18,13 @@ Define cycling goals.
 - Traning Stress Score
 - Total ascent
 - Total descent
+- Stamina
+- Fatigue
+
+Stamina / Fatigue is using the Max W Prime (W`) (In Goals menu).
+
+W′ (W prime) represents the amount of work you can perform above your Critical Power (CP). Think of it as your anaerobic energy reserve. 
+W′ Balance (W′bal) estimates how much of that reserve remains throughout a workout. Above CP: W′ is depleted. Below CP: W′ begins to recover
 
 Display up to 10 goals as:
 

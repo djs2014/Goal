@@ -112,6 +112,15 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       );
       mi.setSubLabel($.getStorageFloatAsString(mi.getId() as String));
       advMenu.addItem(mi);
+     
+      mi = new WatchUi.MenuItem(
+        "Stamina bar height|0-25",
+        null,
+        "stamina_bar_height",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      advMenu.addItem(mi);
 
       WatchUi.pushView(advMenu, new $.GeneralMenuDelegate(), WatchUi.SLIDE_UP);
       return;
@@ -364,6 +373,15 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
       targetMenu.addItem(mi);
 
+      mi = new WatchUi.MenuItem(
+        "Max W Prime (W`)|0~(Joules)",
+        null,
+        "target_max_w_prime",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      targetMenu.addItem(mi);
+
       WatchUi.pushView(
         targetMenu,
         new $.GeneralMenuDelegate(),
@@ -462,9 +480,17 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         array[index] == true
       );
 
+      index = 6;
+      $.addMenuItem(
+        fieldMenu,
+        "Stamina bar", // Don't change this label, it's used in the delegate to identify column fields
+        $.getFieldStaminaBarAsString(array[index] as FieldLayout),
+        $.getKeyAndIndex(storageKey, index)
+      );
+
       // == gPreambleFieldCount
       // Bars
-      index = 6;
+      index = 7;
       for (var i = index; i < $.gShowFieldsArraySize; i++) {
         var colNumber = i - index + 1;
         $.addMenuItem(
@@ -584,8 +610,9 @@ class GeneralMenuDelegate extends WatchUi.Menu2InputDelegate {
       id instanceof String &&
       id.find("|") != null &&
       (_item.getLabel().find("Bar") != null ||
-        _item.getLabel().find("Layout") != null)
-    ) {
+        _item.getLabel().find("Layout") != null ||
+        _item.getLabel().find("Stamina bar") != null)      
+      ) {
       var prefix = stringLeft(id, "|", "");
       var index = stringRight(id, "|", "").toNumber();
       if (prefix == "" || index == null) {
@@ -596,6 +623,15 @@ class GeneralMenuDelegate extends WatchUi.Menu2InputDelegate {
         var sp = new selectionMenuPicker("Field layout", id as String);
         for (var i = 0; i < $.FieldLayoutCount; i++) {
           sp.add($.getFieldLayoutAsString(i as FieldLayout), null, i);
+        }
+        sp.setOnSelected(self, :onSelectedField, _item);
+        sp.show();
+        return;
+      }
+      if (idxLayout == 6) {
+        var sp = new selectionMenuPicker("Stamina bar", id as String);
+        for (var i = 0; i < $.StaminaBarCount; i++) {
+          sp.add($.getFieldStaminaBarAsString(i as StaminaBar), null, i);
         }
         sp.setOnSelected(self, :onSelectedField, _item);
         sp.show();
@@ -869,6 +905,10 @@ function getFieldTypeAsString(fieldType as FieldType) as String {
       return "Total ascent";
     case FTTotalDescent:
       return "Total descent";
+    case FTStamina:
+      return "Stamina";
+    case FTFatigue:
+      return "Fatigue";
     default:
       return "Unknown";
   }
@@ -898,4 +938,23 @@ enum ColorScheme {
   SCHEME_CYBERPUNK = 2,
   SCHEME_PODIUM = 3,
   SCHEME_PASTEL = 4,
+}
+
+function getFieldStaminaBarAsString(stamina as StaminaBar) as String {
+  switch (stamina) {
+    case SBNone:
+      return "None";
+    case SBShowStamina:
+      return "Show stamina";
+    case SBShowFatigue:
+      return "Show fatigue";
+    default:
+      return "Unknown";
+  }
+}
+var StaminaBarCount = 3;
+enum StaminaBar {
+  SBNone = 0,
+  SBShowStamina = 1,
+  SBShowFatigue = 2,
 }

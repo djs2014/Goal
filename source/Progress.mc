@@ -5,7 +5,7 @@ import Toybox.WatchUi;
 import Toybox.UserProfile;
 import Toybox.Attention;
 
-class Progress {
+class Progress {    
     function initialize() {
         mUserFTP = $.getUserFtp();
     }
@@ -163,6 +163,10 @@ class Progress {
                     (getValueForField(info, fieldType) as Number) /
                     $.gTargetTotalDescent.toFloat()
                 );
+            case FTStamina:
+                return $.gAnaerobicWork.getStaminaRatio();
+            case FTFatigue:
+                return $.gAnaerobicWork.getFatigueRatio();
             case FTMinutesElapsed:
                 // value already converted to minutes in getValueForField
                 var elapsedTime =
@@ -490,6 +494,10 @@ class Progress {
                 return $.getActivityValue(info, :totalAscent, 0) as Number;
             case FTTotalDescent:
                 return $.getActivityValue(info, :totalDescent, 0) as Number;
+            case FTStamina:
+                return $.gAnaerobicWork.getStaminaRatio() * 100.0f; // Convert to percentage
+            case FTFatigue:
+                return $.gAnaerobicWork.getFatigueRatio() * 100.0f; // Convert to percentage
             case FTMinutesElapsed:
                 return (
                     ($.getActivityValue(info, :elapsedTime, 0) as Number) /

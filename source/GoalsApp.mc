@@ -37,8 +37,13 @@ class GoalsApp extends Application.AppBase {
     function loadUserSettings() as Void {
         try {
             $.logInfo("Loading user settings");
-
+            
             var reset = Storage.getValue("resetDefaults");
+
+            var hasStaminaField = Storage.getValue("stamina_bar_height");
+            if (hasStaminaField == null) {
+                reset = true;
+            }
             if (reset == null || (reset as Boolean)) {
                 Storage.setValue("resetDefaults", false);
                 // Storage.setValue("show_labels", false);
@@ -49,7 +54,9 @@ class GoalsApp extends Application.AppBase {
                 Storage.setValue("hsp_showvalue", false);
                 Storage.setValue("focus_field_count", 2);
                 Storage.setValue("focus_field_start_at", 1.2);
-                Storage.setValue("color_scheme", 0); 
+                Storage.setValue("color_scheme", 0);
+
+                Storage.setValue("stamina_bar_height", 10);
 
                 Storage.setValue(
                     "show_one_field",
@@ -60,6 +67,7 @@ class GoalsApp extends Application.AppBase {
                         4, // gap
                         80, // divider at
                         false, // field focus
+                        SBNone, // show stamina bar
                         FTDistance,
                         FTMinutesElapsed,
                         FTCalories,
@@ -70,8 +78,7 @@ class GoalsApp extends Application.AppBase {
                         FTAverageHeartRateZone,
                         FTNormalizedPower,
                         FTIntensityFactor,
-
-                    ] as Array<Numeric or FieldLayout or Boolean>
+                    ] as Array<Numeric or FieldLayout or Boolean or StaminaBar>
                 );
                 Storage.setValue(
                     "show_large_field",
@@ -81,7 +88,8 @@ class GoalsApp extends Application.AppBase {
                         false, // show values
                         8, // gap
                         80, // divider at
-                        false, // field focus   
+                        false, // field focus
+                        SBNone, // show stamina bar
                         FTDistance,
                         FTMinutesElapsed,
                         FTCalories,
@@ -90,7 +98,7 @@ class GoalsApp extends Application.AppBase {
                         FTCadence,
                         FTSpeed,
                         FTHeartRateZone,
-                    ] as Array<Numeric or FieldLayout or Boolean>
+                    ] as Array<Numeric or FieldLayout or Boolean or StaminaBar>
                 );
                 Storage.setValue(
                     "show_wide_field",
@@ -101,6 +109,7 @@ class GoalsApp extends Application.AppBase {
                         8, // gap
                         80, // divider at
                         true, // field focus
+                        SBShowStamina, // show stamina bar
                         FTDistance,
                         FTMinutesElapsed,
                         FTCalories,
@@ -109,7 +118,7 @@ class GoalsApp extends Application.AppBase {
                         FTCadence,
                         FTSpeed,
                         FTHeartRateZone,
-                    ] as Array<Numeric or FieldLayout or Boolean>
+                    ] as Array<Numeric or FieldLayout or Boolean or StaminaBar>
                 );
                 Storage.setValue(
                     "show_small_field",
@@ -120,6 +129,7 @@ class GoalsApp extends Application.AppBase {
                         1, // gap
                         80, // divider at
                         false, // field focus
+                        SBShowStamina, // show stamina bar
                         FTDistance,
                         FTMinutesElapsed,
                         FTCalories,
@@ -128,39 +138,41 @@ class GoalsApp extends Application.AppBase {
                         FTCadence,
                         FTSpeed,
                         FTHeartRateZone,
-                    ] as Array<Numeric or FieldLayout or Boolean>
+                    ] as Array<Numeric or FieldLayout or Boolean or StaminaBar>
                 );
 
                 // Init for casual scenario 80km
                 Storage.setValue("preset_distance", 80); // km
                 Storage.setValue("preset_duration", 0); // minutes
                 Storage.setValue("preset_suffer_factor", 1.0); // calories
-                $.applyPreset("preset_casual"); 
+                $.applyPreset("preset_casual");
 
                 Storage.setValue("alert_calories_window", 700); // calories loop
                 Storage.setValue("alert_calories_sound", false); // sound
                 Storage.setValue("alert_timeelapsed_window", 0); // minutes
                 Storage.setValue("alert_timeelapsed_sound", false); // sound
                 Storage.setValue("alert_displaytime_sec", 10); // seconds
+
+                Storage.setValue("target_max_w_prime", 15000); // Joules
             }
 
             // $.gDebug = $.getStorageValue("debug", $.gDebug) as Boolean;
 
             var show_OneField =
                 $.getStorageValue("show_one_field", [$.gShowFieldsArraySize]) as
-                Array<Numeric or Boolean or FieldLayout>;
+                Array<Numeric or Boolean or FieldLayout or StaminaBar>;
             var show_LargeField =
                 $.getStorageValue("show_large_field", [
                     $.gShowFieldsArraySize,
-                ]) as Array<Numeric or Boolean or FieldLayout>;
+                ]) as Array<Numeric or Boolean or FieldLayout or StaminaBar>;
             var show_WideField =
                 $.getStorageValue("show_wide_field", [
                     $.gShowFieldsArraySize,
-                ]) as Array<Numeric or Boolean or FieldLayout>;
+                ]) as Array<Numeric or Boolean or FieldLayout or StaminaBar>;
             var show_SmallField =
                 $.getStorageValue("show_small_field", [
                     $.gShowFieldsArraySize,
-                ]) as Array<Numeric or Boolean or FieldLayout>;
+                ]) as Array<Numeric or Boolean or FieldLayout or StaminaBar>;
 
             if ($.ensureArraySize(show_OneField, $.gShowFieldsArraySize, 0)) {
                 $.setStorageValueOrArray("show_one_field", show_OneField);
@@ -184,29 +196,36 @@ class GoalsApp extends Application.AppBase {
             $.gCadenceCounter =
                 $.getStorageValue("cadence_counter", $.gCadenceCounter) as
                 Number;
-            
+
             var powerPerSeconds =
                 $.getStorageValue("power_per_seconds", $.gPowerPerSec) as
                 Number;
             $.gPowerPerSec.setPowerPerSec(powerPerSeconds);
 
             $.gHspDarklightBreakpoint =
-                $.getStorageValue("hsp_darklight_breakpoint", $.gHspDarklightBreakpoint) as
-                Float;
+                $.getStorageValue(
+                    "hsp_darklight_breakpoint",
+                    $.gHspDarklightBreakpoint
+                ) as Float;
             $.gHspShowValue =
-                $.getStorageValue("hsp_showvalue", $.gHspShowValue) as
-                Boolean;
+                $.getStorageValue("hsp_showvalue", $.gHspShowValue) as Boolean;
             $.gFocusFieldCount =
                 $.getStorageValue("focus_field_count", $.gFocusFieldCount) as
                 Number;
             $.gFocusFieldStartAt =
-                $.getStorageValue("focus_field_start_at", $.gFocusFieldStartAt) as
-                Float;
+                $.getStorageValue(
+                    "focus_field_start_at",
+                    $.gFocusFieldStartAt
+                ) as Float;
 
             $.gColorScheme =
                 $.getStorageValue("color_scheme", $.gColorScheme) as
                 ColorScheme;
-    
+
+            $.gStaminaBarHeight =
+                $.getStorageValue("stamina_bar_height", $.gStaminaBarHeight) as
+                Number;
+
             $.gTargetDistance =
                 $.getStorageValue("target_distance", $.gTargetDistance) as
                 Number;
@@ -258,14 +277,13 @@ class GoalsApp extends Application.AppBase {
                     $.gTargetTotalDescent
                 ) as Number;
             $.gTargetMinutesElapsed =
-                $.getStorageValue(
-                    "target_duration",
-                    $.gTargetMinutesElapsed
-                ) as Number;
+                $.getStorageValue("target_duration", $.gTargetMinutesElapsed) as
+                Number;
             $.gTargetHeartRateZone =
                 $.getStorageValue("target_heart_rate_zone", 2.0f) as Float;
             $.gTargetAverageHeartRateZone =
-                $.getStorageValue("target_average_heart_rate_zone", 2.0f) as Float;
+                $.getStorageValue("target_average_heart_rate_zone", 2.0f) as
+                Float;
             $.gHeartRate.initHrZones();
 
             $.gTargetIntensityFactor =
@@ -279,6 +297,10 @@ class GoalsApp extends Application.AppBase {
                     $.gTargetTrainingStressScore
                 ) as Number;
 
+            var targetMaxWPrime =
+                $.getStorageValue("target_max_w_prime", 15000.0f) as Float;
+            $.gAnaerobicWork.setMaxWPrime(targetMaxWPrime);
+
             // Alerts
             $.gAlertCaloriesWindow =
                 $.getStorageValue("alert_calories_window", 300) as Number;
@@ -289,7 +311,8 @@ class GoalsApp extends Application.AppBase {
             $.gAlertTimeElapsedSound =
                 $.getStorageValue("alert_timeelapsed_sound", false) as Boolean;
             $.gAlertDisplayTimeMillisec =
-                ($.getStorageValue("alert_displaytime_sec", 10) as Number) * 1000;
+                ($.getStorageValue("alert_displaytime_sec", 10) as Number) *
+                1000;
 
             $.logInfo(["User settings loaded"]);
         } catch (ex) {
@@ -305,9 +328,10 @@ function getApp() as GoalsApp {
 
 var gHeartRate = new HeartRate();
 var gPowerPerSec = new PowerPerSec();
+var gAnaerobicWork = new AnaerobicWork();
 
 // +5 for the layout and other settings
-var gPreambleFieldCount as Number = 6;
+var gPreambleFieldCount as Number = 7;
 var gShowFieldsArraySize as Number =
     $.gPreambleFieldCount + $.gMaxProgressColumns;
 
@@ -318,6 +342,8 @@ var gHspShowValue as Boolean = false;
 var gFocusFieldCount as Number = 2;
 var gFocusFieldStartAt as Float = 1.2f;
 var gColorScheme as ColorScheme = SCHEME_CLASSIC;
+
+var gStaminaBarHeight as Number = 10;
 
 // Target values for progress calculations
 var gTargetDistance as Number = 150;

@@ -7,4 +7,3 @@ plan:
 add vo2max formula -> ?? 
 
 
-
