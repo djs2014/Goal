@@ -138,6 +138,7 @@ function applyPreset(profileId as String) as Boolean {
         "target_training_stress_score",
         targets["target_training_stress_score"]
     );
+    Storage.setValue("target_total_work", targets["target_total_work"]);
 
     return true;
 }
@@ -273,6 +274,7 @@ function generateProfileTargets(
         "target_average_heart_rate_zone" => 0.0f,
         "target_intensity_factor" => 0.0f,
         "target_training_stress_score" => 0,
+        "target_total_work" => 0, // in Joules
     };
 
     // Baseline FTP and Max HR
@@ -441,6 +443,11 @@ function generateProfileTargets(
     // Update calculated values
     targets["target_distance"] = distanceKm;
     targets["target_duration"] = durationHrs * 60;
+    // Calculate total work in Joules: Power (Watts) * Time (Seconds)
+    targets["target_total_work"] = (
+        targets["target_average_power"] *
+        (durationHrs * 3600.0f)
+    ).toNumber(); // Convert hours to seconds
 
     System.println(targets);
     return targets;

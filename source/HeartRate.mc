@@ -1,6 +1,9 @@
 import Toybox.Application;
 import Toybox.Lang;
 import Toybox.WatchUi;
+import Toybox.Time;
+import Toybox.Time.Gregorian;
+import Toybox.UserProfile;
 
 public class HeartRate {
     var mHeartRateZones as Array<Number> = [] as Array<Number>;
@@ -60,18 +63,16 @@ public class HeartRate {
         var zoneFloor = mHeartRateZones[targetZoneInt - 1]; // e.g., if targetZone=2, floor is index 1 (153)
         var zoneCeiling = mHeartRateZones[targetZoneInt]; // e.g., if targetZone=2, ceiling is index 2 (179)
         var zoneRemainder = targetZone - targetZoneInt; // e.g., 0.2f
-       
+
         // Calculate the exact target BPM for this decimal zone (e.g., 2.2f)
         var targetBpm = zoneFloor + zoneRemainder * (zoneCeiling - zoneFloor);
         // Calculate progress relative to the target BPM
         // If the athlete is at the target BPM exactly, ratio is 1.0f
         var progressRatio = liveHeartRate.toFloat() / targetBpm;
 
-        
         return progressRatio; // e.g., if HR is 166 and targetBpm is 166, returns 1.0f (Perfectly on target!)
     }
 
-        
     function getBpmFromDecimalZone(decimalZone as Float) as Number {
         if (mHeartRateZones.size() < 6) {
             return 0;
@@ -105,7 +106,7 @@ public class HeartRate {
         if (mHeartRateZones.size() < 6 || liveHeartRate <= 0) {
             return 1.0f; // Default to Zone 1 if zones are uninitialized
         }
-            
+
         // 2. Handle the absolute basement (Below Zone 1 floor)
         if (liveHeartRate < mHeartRateZones[0]) {
             return 1.0f;
@@ -133,5 +134,23 @@ public class HeartRate {
 
         // 4. Handle the roof (Exceeding Zone 5 maximum)
         return 5.9f;
+    }
+
+    function getUserMaxHeartRate() as Number {
+        if (mHeartRateZones.size() >= 5) {
+            // The upper bound of Zone 5 (index 4) is the user's Max HR
+            var maxHR = mHeartRateZones[4];
+
+            if (maxHR > 100) {
+                return maxHR;
+            }
+        }
+
+        // 4. Smart Fallback: Use the traditional textbook formula if profile data is missing
+        var userProfile = UserProfile.getProfile();
+        var birthYear = userProfile.birthYear;
+        var today = Gregorian.info(Time.now(), Time.FORMAT_MEDIUM);
+        var age = birthYear != null ? today.year - birthYear : 35;
+        return 220 - age; // Default fallback age-based estimate if profile is null
     }
 }

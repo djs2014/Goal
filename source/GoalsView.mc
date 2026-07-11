@@ -68,6 +68,26 @@ class GoalsView extends WatchUi.DataField {
     function initialize() {
         DataField.initialize();
         initializeArrays();
+
+        $.gEfficiencyFactorTracker.setOnApplyFatiguePenalty(
+            self,
+            :onApplyFatiguePenalty
+        );
+    }
+
+    var mShowFreshnessMessageCounter as Number = 0;
+    var mFresshnessMessage as String = "";
+    function onApplyFatiguePenalty(fatigueFactor as Float) as Void {
+        $.logInfo(["onApplyFatiguePenalty: fatigueFactor:", fatigueFactor]);
+        $.gAnaerobicWork.applyFatiguePenalty(fatigueFactor);
+        mShowFreshnessMessageCounter = 0;
+        if (fatigueFactor < 0.88f) {
+            mFresshnessMessage = "Tired";
+            mShowFreshnessMessageCounter = 5; // Show for 5 seconds
+        } else if (fatigueFactor < 0.95f) {
+            mFresshnessMessage = "Slightly Tired";
+            mShowFreshnessMessageCounter = 5; // Show for 5 seconds
+        }
     }
 
     function initializeArrays() as Void {
@@ -149,7 +169,7 @@ class GoalsView extends WatchUi.DataField {
     // Note that compute() and onUpdate() are asynchronous, and there is no
     // guarantee that compute() will be called before onUpdate().
     function compute(info as Activity.Info) as Void {
-        if (info has :timerState) {
+        if (info has :timerState && info.timerState != null) {
             mPaused =
                 info.timerState == Activity.TIMER_STATE_PAUSED or
                 info.timerState == Activity.TIMER_STATE_OFF;
@@ -157,6 +177,12 @@ class GoalsView extends WatchUi.DataField {
             mPaused = true;
             mPauseExtendedCounter = 10;
         }
+
+        // Elapsed time is in milliseconds, convert to seconds for warmup processing
+        var elapsedSeconds = (
+            ($.getActivityValue(info, :elapsedTime, 0) as Number) / 1000
+        ).toNumber();
+        $.gEfficiencyFactorTracker.processWarmup(info, elapsedSeconds);
 
         if (mPaused) {
             mShowDetailsOnPause = true;
@@ -407,7 +433,7 @@ class GoalsView extends WatchUi.DataField {
         dc.clear();
 
         var screenW = dc.getWidth();
-        var screenH = dc.getHeight(); 
+        var screenH = dc.getHeight();
         if (mFieldShowStamina != SBNone) {
             // Reserve space for the stamina bar at the bottom of the screen
             screenH -= $.gStaminaBarHeight;
@@ -499,6 +525,11 @@ class GoalsView extends WatchUi.DataField {
                 $.gStaminaBarHeight,
                 mFieldShowStamina
             );
+            if (mShowFreshnessMessageCounter > 0) {
+                mShowFreshnessMessageCounter -= 1;
+                // draw the freshness message centered above the stamina bar
+                drawFreshnessMessage(dc, screenH, mFresshnessMessage);
+            }
         }
     }
 
@@ -2283,6 +2314,36 @@ class GoalsView extends WatchUi.DataField {
         } // mFieldShowLabels || mShowDetailsOnPause)
     }
 
+    hidden function drawFreshnessMessage(
+        dc as Graphics.Dc,
+        posY as Number,
+        freshnessMessage as String
+    ) as Void {
+        if (freshnessMessage.length() == 0) {
+            return;
+        }
+        var font = Graphics.FONT_XTINY;
+        var textWidth = dc.getTextWidthInPixels(freshnessMessage, font);
+        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+        dc.fillRoundedRectangle(
+            (dc.getWidth() - textWidth) / 2 - 4,
+            posY - 2,
+            textWidth + 8,
+            dc.getFontHeight(font) + 4,
+            4
+        );
+
+        var textX = (dc.getWidth() - textWidth) / 2;
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(
+            textX,
+            posY,
+            font,
+            freshnessMessage,
+            Graphics.TEXT_JUSTIFY_LEFT
+        );
+    }
+
     hidden function drawStaminaProgressBar(
         dc as Graphics.Dc,
         barX as Number,
@@ -2293,30 +2354,46 @@ class GoalsView extends WatchUi.DataField {
     ) as Void {
         var ratio;
         var gaugeColor = 0;
-        if (staminaBar == SBShowStamina) {
+
+        // If in warmup phase (recording base EF)
+        var warmupPhase = !$.gEfficiencyFactorTracker.getHasCalculatedWarmup();
+
+        if (warmupPhase) {
+            // Disable stamina bar and show warmup ratio instead
+            ratio = $.gEfficiencyFactorTracker.getWarmupRatio();
+            gaugeColor = Graphics.COLOR_BLUE;
+        } else if (staminaBar == SBShowStamina) {
             ratio = $.gAnaerobicWork.getStaminaRatio();
             gaugeColor = transitionFromTo(
-                255,          // Alpha
-                255, 23, 68,  // Red at 0.0 percent
-                0, 230, 118,  // Green at 1.0 percent
+                255, // Alpha
+                255,
+                23,
+                68, // Red at 0.0 percent
+                0,
+                230,
+                118, // Green at 1.0 percent
                 ratio
             );
         } else if (staminaBar == SBShowFatigue) {
             ratio = $.gAnaerobicWork.getFatigueRatio();
             gaugeColor = transitionFromTo(
-                255,           // Alpha
-                40, 160, 220,  // Cool Slate at 0.0 percent
-                255, 50, 0,    // Fiery Red at 1.0 percent
+                255, // Alpha
+                40,
+                160,
+                220, // Cool Slate at 0.0 percent
+                255,
+                50,
+                0, // Fiery Red at 1.0 percent
                 ratio
             );
         } else {
             return;
         }
-                
+
         // 2. Draw Trough / Background Track (Dark Gray or Translucent)
         dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
         dc.fillRectangle(barX, barY, barWidth, barHeight);
-        
+
         // 4. Calculate Inner Fill Width
         var fillWidth = (barWidth * ratio).toNumber();
 
@@ -2324,6 +2401,13 @@ class GoalsView extends WatchUi.DataField {
         if (fillWidth > 0) {
             dc.setColor(gaugeColor, Graphics.COLOR_TRANSPARENT);
             dc.fillRectangle(barX, barY, fillWidth, barHeight);
+            if (warmupPhase) {
+                // Draw a subtle diagonal hatch pattern to indicate warmup phase
+                dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+                for (var i = 0; i < fillWidth; i += 4) {
+                    dc.drawLine(barX + i, barY, barX + i - 2, barY + barHeight);
+                }
+            }
         }
 
         // 6. Draw Subtle Separator/Border line across top of the bar
@@ -2331,28 +2415,45 @@ class GoalsView extends WatchUi.DataField {
         dc.drawLine(barX, barY, barX + barWidth, barY);
 
         // 7. Optional Text Centering (If bar height is large enough, e.g. >= 14px)
-        if (barHeight >= 14) {
-            var ratioPercent = (ratio * 100).toNumber().format("%d") + " %";
-            var textWidth = dc.getTextWidthInPixels(ratioPercent, Graphics.FONT_XTINY);
+        if (
+            barHeight >= 14 &&
+            (mShowDetailsOnPause || mShowDetailsOn0Cadence)
+        ) {
+            // Ratio percentage
+            var staminaText = (ratio * 100).toNumber().format("%d") + " %";
+            if ($.gShowRemainingWPrime) {
+                var remainingWPrime = $.gAnaerobicWork.getWPrimeRemaining();
+                staminaText = remainingWPrime.toNumber().format("%d") + " J";
+            }
+            var textWidth = dc.getTextWidthInPixels(
+                staminaText,
+                Graphics.FONT_XTINY
+            );
             // Check if gaugeColor hitting the start of the text
             var textStartX = barX + (barWidth - textWidth) / 2;
             if (textStartX < barX + fillWidth) {
                 // Text is overlapping the filled portion, so we need to ensure contrast
                 if ($.isColorLight(gaugeColor)) {
-                    dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+                    dc.setColor(
+                        Graphics.COLOR_BLACK,
+                        Graphics.COLOR_TRANSPARENT
+                    );
                 } else {
-                    dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+                    dc.setColor(
+                        Graphics.COLOR_WHITE,
+                        Graphics.COLOR_TRANSPARENT
+                    );
                 }
             } else {
                 // Text is fully on the empty portion, so use default text color
                 dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
             }
-            
+
             dc.drawText(
                 barX + barWidth / 2,
                 barY + barHeight / 2,
                 Graphics.FONT_XTINY,
-                ratioPercent,
+                staminaText,
                 Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER
             );
         }
@@ -2705,6 +2806,8 @@ class GoalsView extends WatchUi.DataField {
                 return value.format("%.0f") + " %"; // Stamina is a percentage
             case FTFatigue:
                 return value.format("%.0f") + " %"; // Fatigue is a percentage
+            case FTWork:
+                return (value / 1000.0f).format("%.1f") + " KJ"; // Is in kilojoules
             default:
                 return value.format("%.2f"); // Default: no conversion
         }
@@ -2801,6 +2904,8 @@ class GoalsView extends WatchUi.DataField {
                 return "STA";
             case FTFatigue:
                 return "FAT";
+            case FTWork:
+                return "WRK";
             default:
                 return "";
         }
@@ -2865,6 +2970,8 @@ class GoalsView extends WatchUi.DataField {
                 return "STAMINA";
             case FTFatigue:
                 return "FATIGUE";
+            case FTWork:
+                return "WORK";
             default:
                 return "";
         }

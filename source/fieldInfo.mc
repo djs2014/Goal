@@ -12,7 +12,7 @@ enum FieldLayout {
     // FLRadialGauge = 5, 
 }
 
-var FieldTypeCount = 22; // incl the 0
+var FieldTypeCount = 23; // incl the 0
 enum FieldType {
     FTUnknown = 0,
     // Duration related fields
@@ -40,4 +40,5 @@ enum FieldType {
     FTTotalDescent = 19,
     FTStamina = 20,
     FTFatigue = 21,
+    FTWork = 22, // Joules spent
 }

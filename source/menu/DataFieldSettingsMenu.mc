@@ -112,15 +112,6 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       );
       mi.setSubLabel($.getStorageFloatAsString(mi.getId() as String));
       advMenu.addItem(mi);
-     
-      mi = new WatchUi.MenuItem(
-        "Stamina bar height|0-25",
-        null,
-        "stamina_bar_height",
-        null
-      );
-      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
-      advMenu.addItem(mi);
 
       WatchUi.pushView(advMenu, new $.GeneralMenuDelegate(), WatchUi.SLIDE_UP);
       return;
@@ -374,9 +365,9 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
       targetMenu.addItem(mi);
 
       mi = new WatchUi.MenuItem(
-        "Max W Prime (W`)|0~(Joules)",
+        "Total work|0~(Joules)",
         null,
-        "target_max_w_prime",
+        "target_total_work",
         null
       );
       mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
@@ -384,6 +375,91 @@ class DataFieldSettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
 
       WatchUi.pushView(
         targetMenu,
+        new $.GeneralMenuDelegate(),
+        WatchUi.SLIDE_UP
+      );
+      return;
+    }
+
+    if (id instanceof String && id.equals("stamina")) {
+      var staminaMenu = new WatchUi.Menu2({ :title => "Stamina" });
+
+      var mi;
+
+      mi = new WatchUi.MenuItem(
+        "Max W Prime (W`)|0~(Joules)",
+        null,
+        "target_max_w_prime",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      staminaMenu.addItem(mi);
+
+      var boolean;
+      boolean = $.getStorageValue("auto_record_new_base_ef", false) as Boolean;
+      staminaMenu.addItem(
+        new WatchUi.ToggleMenuItem(
+          "Auto-record new Base EF",
+          null,
+          "auto_record_new_base_ef",
+          boolean,
+          null
+        )
+      );
+
+      mi = new WatchUi.MenuItem(
+        "Stamina bar height|0-25",
+        null,
+        "stamina_bar_height",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      staminaMenu.addItem(mi);
+
+      mi = new WatchUi.MenuItem(
+        "Warm-up start|180-(seconds)",
+        null,
+        "warmup_start_seconds",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      staminaMenu.addItem(mi);
+
+      mi = new WatchUi.MenuItem(
+        "Warm-up end|480-(seconds)",
+        null,
+        "warmup_end_seconds",
+        null
+      );
+      mi.setSubLabel($.getStorageNumberAsString(mi.getId() as String));
+      staminaMenu.addItem(mi);
+
+      mi = new WatchUi.MenuItem("Base EF|0.0", null, "stamina_base_ef", null);
+      mi.setSubLabel($.getStorageFloatAsString(mi.getId() as String));
+      staminaMenu.addItem(mi);
+
+      mi = new WatchUi.MenuItem(
+        "Fatigue factor|0.0-1.0",
+        null,
+        "stamina_fatigue_factor",
+        null
+      );
+      mi.setSubLabel($.getStorageFloatAsString(mi.getId() as String));
+      staminaMenu.addItem(mi);
+
+      boolean = $.getStorageValue("show_remaining_w_prime", false) as Boolean;
+      staminaMenu.addItem(
+        new WatchUi.ToggleMenuItem(
+          "Show remaining W' (Joules)",
+          null,
+          "show_remaining_w_prime",
+          boolean,
+          null
+        )
+      );
+
+      WatchUi.pushView(
+        staminaMenu,
         new $.GeneralMenuDelegate(),
         WatchUi.SLIDE_UP
       );
@@ -611,8 +687,8 @@ class GeneralMenuDelegate extends WatchUi.Menu2InputDelegate {
       id.find("|") != null &&
       (_item.getLabel().find("Bar") != null ||
         _item.getLabel().find("Layout") != null ||
-        _item.getLabel().find("Stamina bar") != null)      
-      ) {
+        _item.getLabel().find("Stamina bar") != null)
+    ) {
       var prefix = stringLeft(id, "|", "");
       var index = stringRight(id, "|", "").toNumber();
       if (prefix == "" || index == null) {
@@ -909,6 +985,8 @@ function getFieldTypeAsString(fieldType as FieldType) as String {
       return "Stamina";
     case FTFatigue:
       return "Fatigue";
+    case FTWork:
+      return "Work (Joules)";
     default:
       return "Unknown";
   }

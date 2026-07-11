@@ -21,10 +21,13 @@ Define cycling goals.
 - Stamina
 - Fatigue
 
-Stamina / Fatigue is using the Max W Prime (W`) (In Goals menu).
+## Stamina menu
+Stamina / Fatigue is using the Max W Prime (W`)
 
 W′ (W prime) represents the amount of work you can perform above your Critical Power (CP). Think of it as your anaerobic energy reserve. 
 W′ Balance (W′bal) estimates how much of that reserve remains throughout a workout. Above CP: W′ is depleted. Below CP: W′ begins to recover
+
+See: https://www.triathlete.com/training/what-is-w-prime/?scope=anon
 
 Display up to 10 goals as:
 

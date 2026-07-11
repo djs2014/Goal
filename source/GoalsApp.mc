@@ -53,10 +53,14 @@ class GoalsApp extends Application.AppBase {
                 Storage.setValue("hsp_darklight_breakpoint", 127.5);
                 Storage.setValue("hsp_showvalue", false);
                 Storage.setValue("focus_field_count", 2);
-                Storage.setValue("focus_field_start_at", 1.2);
+                Storage.setValue("focus_field_start_at", 1.0);
                 Storage.setValue("color_scheme", 0);
 
                 Storage.setValue("stamina_bar_height", 10);
+                Storage.setValue("warmup_start_seconds", 180);
+                Storage.setValue("warmup_end_seconds", 480);
+                Storage.setValue("stamina_base_ef", 0.0f);
+                Storage.setValue("stamina_fatigue_factor", 1.0f);
 
                 Storage.setValue(
                     "show_one_field",
@@ -153,7 +157,9 @@ class GoalsApp extends Application.AppBase {
                 Storage.setValue("alert_timeelapsed_sound", false); // sound
                 Storage.setValue("alert_displaytime_sec", 10); // seconds
 
+                Storage.setValue("target_total_work", 3000000); // Joules
                 Storage.setValue("target_max_w_prime", 15000); // Joules
+                Storage.setValue("show_remaining_w_prime", false); 
             }
 
             // $.gDebug = $.getStorageValue("debug", $.gDebug) as Boolean;
@@ -285,7 +291,10 @@ class GoalsApp extends Application.AppBase {
                 $.getStorageValue("target_average_heart_rate_zone", 2.0f) as
                 Float;
             $.gHeartRate.initHrZones();
-
+            var maxHr = $.gHeartRate.getUserMaxHeartRate();
+            $.gAnaerobicWork.setUserMaxHeartRate(maxHr);
+            $.gAnaerobicWork.setUserFtp($.getUserFtp());
+            
             $.gTargetIntensityFactor =
                 $.getStorageValue(
                     "target_intensity_factor",
@@ -296,10 +305,20 @@ class GoalsApp extends Application.AppBase {
                     "target_training_stress_score",
                     $.gTargetTrainingStressScore
                 ) as Number;
+            $.gTargetTotalWork =
+                $.getStorageValue(
+                    "target_total_work",
+                    $.gTargetTotalWork
+                ) as Number;
+
 
             var targetMaxWPrime =
                 $.getStorageValue("target_max_w_prime", 15000.0f) as Float;
             $.gAnaerobicWork.setMaxWPrime(targetMaxWPrime);
+            $.gEfficiencyFactorTracker.loadSettings();
+
+            $.gShowRemainingWPrime =
+                $.getStorageValue("show_remaining_w_prime", $.gShowRemainingWPrime) as Boolean;
 
             // Alerts
             $.gAlertCaloriesWindow =
@@ -329,6 +348,7 @@ function getApp() as GoalsApp {
 var gHeartRate = new HeartRate();
 var gPowerPerSec = new PowerPerSec();
 var gAnaerobicWork = new AnaerobicWork();
+var gEfficiencyFactorTracker = new EfficiencyFactorTracker();
 
 // +5 for the layout and other settings
 var gPreambleFieldCount as Number = 7;
@@ -344,12 +364,14 @@ var gFocusFieldStartAt as Float = 1.2f;
 var gColorScheme as ColorScheme = SCHEME_CLASSIC;
 
 var gStaminaBarHeight as Number = 10;
+var gShowRemainingWPrime as Boolean = false;
 
 // Target values for progress calculations
 var gTargetDistance as Number = 150;
 var gTargetMinutesElapsed as Number = 300;
 var gTargetCalories as Number = 2000;
 var gTargetTrainingStressScore as Number = 150;
+var gTargetTotalWork as Number = 3000000; // Joules
 
 var gTargetAveragePower as Number = 200;
 var gTargetAverageSpeed as Number = 28;

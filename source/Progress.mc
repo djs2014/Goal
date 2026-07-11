@@ -5,7 +5,7 @@ import Toybox.WatchUi;
 import Toybox.UserProfile;
 import Toybox.Attention;
 
-class Progress {    
+class Progress {
     function initialize() {
         mUserFTP = $.getUserFtp();
     }
@@ -167,10 +167,17 @@ class Progress {
                 return $.gAnaerobicWork.getStaminaRatio();
             case FTFatigue:
                 return $.gAnaerobicWork.getFatigueRatio();
+            case FTWork:
+                if ($.gTargetTotalWork == 0) {
+                    return 0.0f;
+                }
+                return (
+                    (getValueForField(info, fieldType) as Number) /
+                    $.gTargetTotalWork.toFloat()
+                );
             case FTMinutesElapsed:
                 // value already converted to minutes in getValueForField
-                var elapsedTime =
-                    (getValueForField(info, fieldType) as Number);
+                var elapsedTime = getValueForField(info, fieldType) as Number;
                 if ($.gAlertTimeElapsedWindow > 0) {
                     var timeWindow = $.gAlertTimeElapsedWindow;
                     var currentRemainder = elapsedTime % timeWindow;
@@ -217,12 +224,14 @@ class Progress {
                 if ($.gTargetTrainingStressScore == 0) {
                     return 0.0f;
                 }
-                return ( getValueForField(info, FTTrainingStressScore) as Number ) 
-                    / $.gTargetTrainingStressScore.toFloat();
-                    // getTrainingStressScore(
-                    //     $.getActivityValue(info, :elapsedTime, 0) as Number
-                    // ) / $.gTargetTrainingStressScore.toFloat()
-                // );
+                return (
+                    (getValueForField(info, FTTrainingStressScore) as Number) /
+                    $.gTargetTrainingStressScore.toFloat()
+                );
+            // getTrainingStressScore(
+            //     $.getActivityValue(info, :elapsedTime, 0) as Number
+            // ) / $.gTargetTrainingStressScore.toFloat()
+            // );
             default:
                 $.logInfo([
                     "getProgressForField Unknown field type:",
@@ -453,7 +462,7 @@ class Progress {
             case FTPower:
                 // Use the PowerPerSec class to get a smoothed power value over the last N seconds, where N is configurable by the user
                 return $.gPowerPerSec.getLastComputedPower();
-                // return $.getActivityValue(info, :currentPower, 0) as Number;
+            // return $.getActivityValue(info, :currentPower, 0) as Number;
             case FTAveragePower:
                 var avgPower =
                     $.getActivityValue(info, :averagePower, 0) as Number;
@@ -462,7 +471,9 @@ class Progress {
                 }
                 return mCachedAveragePower;
             case FTSpeed:
-                return ($.getActivityValue(info, :currentSpeed, 0) as Float) * 3.6f; // convert meters/second to km/h
+                return (
+                    ($.getActivityValue(info, :currentSpeed, 0) as Float) * 3.6f
+                ); // convert meters/second to km/h
             case FTAverageSpeed:
                 // var aSpeed =
                 //     ($.getActivityValue(info, :averageSpeed, 0) as Float);
@@ -474,7 +485,8 @@ class Progress {
                 //     aSpeedKMH,
                 // ]);
                 var avgSpeed =
-                    ($.getActivityValue(info, :averageSpeed, 0) as Float) * 3.6f; // convert meters/second to km/h
+                    ($.getActivityValue(info, :averageSpeed, 0) as Float) *
+                    3.6f; // convert meters/second to km/h
                 if (avgSpeed > 0) {
                     mCachedAverageSpeed = avgSpeed;
                 }
@@ -498,6 +510,8 @@ class Progress {
                 return $.gAnaerobicWork.getStaminaRatio() * 100.0f; // Convert to percentage
             case FTFatigue:
                 return $.gAnaerobicWork.getFatigueRatio() * 100.0f; // Convert to percentage
+            case FTWork:
+                return $.gPowerPerSec.getTotalJoules(); // Return total work in joules                
             case FTMinutesElapsed:
                 return (
                     ($.getActivityValue(info, :elapsedTime, 0) as Number) /

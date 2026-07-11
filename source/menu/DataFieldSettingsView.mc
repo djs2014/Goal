@@ -75,6 +75,9 @@ class DataFieldSettingsDelegate extends WatchUi.BehaviorDelegate {
     menu.addItem(mi);
 ;
 
+    mi = new WatchUi.MenuItem("Stamina", null, "stamina", null);
+    menu.addItem(mi);
+
     mi = new WatchUi.MenuItem("Advanced", null, "advanced", null);
     menu.addItem(mi);
 

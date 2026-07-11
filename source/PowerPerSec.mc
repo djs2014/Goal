@@ -39,6 +39,10 @@ class PowerPerSec {
         if (info has :currentPower && info.currentPower != null) {
             rawPower = info.currentPower;
         }
+        // Only when active can we accumulate total energy (Joules)
+        if (activityOn(info)) {
+            calculateTotalJoules(rawPower);
+        }
 
         // Overwrite the oldest sample in our rolling buffer
         _powerBuffer[_bufferIndex] = rawPower;
@@ -57,5 +61,26 @@ class PowerPerSec {
         _lastComputedPower = (sum / _samplesCount).toNumber();
         // System.println(["PowerPerSec.compute", _lastComputedPower, _powerBuffer, _samplesCount]);
         return _lastComputedPower;
+    }
+
+    // TEST
+    // hidden var totalJoules as Number = 1000000; 
+    hidden var totalJoules as Number = 0;
+    function getTotalJoules() as Number {
+        return totalJoules;
+    }
+
+    hidden function calculateTotalJoules(currentPower as Number) as Void {
+        // Because this loop runs exactly once per second:
+        // 1 Watt * 1 Second = 1 Joule
+        totalJoules += currentPower;
+        //System.println(["PowerPerSec.calculateTotalJoules", totalJoules, currentPower]);
+    }
+
+    hidden function activityOn(info as Activity.Info) as Boolean {
+        if (info has :timerState && info.timerState != null) {            
+            return info.timerState == Activity.TIMER_STATE_ON;
+        }
+        return false;
     }
 }
